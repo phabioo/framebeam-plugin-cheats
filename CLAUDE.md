@@ -2,13 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-framebeam-plugin-cheats is a generic cheats plugin for all games. It manages cheat code lists per game and applies the codes by writing emulator memory, because some cores (for example Azahar for the 3DS) leave `retro_cheat_set` empty. Where a core implements `retro_cheat_set`, the plugin may use it instead.
+uzume-plugin-cheats is a generic cheats plugin for all games. It manages cheat code lists per game and hands them to Uzume, which applies them through the cores' own cheat engines (`retro_cheat_set`; for the 3DS the Azahar fork connects it to its Gateway engine). `memory.write` is only for raw codes a core cannot handle.
 
-## Relation to FrameBeam
+## Relation to Uzume
 
-- Plugin for [FrameBeam](https://github.com/phabioo/framebeam) (self-hosted retro gaming platform). Interface: `docs/architecture/12-plugins.md` in the FrameBeam repository.
-- Plugin API v1 is planned (FrameBeam 0.11) and not implemented yet; everything here is design until it exists. Open API items are marked open, never invented.
-- Runtime: Lua 5.4 in the FrameBeam sandbox; UI only as declarative building blocks (no QML).
+- Plugin for [Uzume](https://github.com/phabioo/uzume) (self-hosted retro gaming platform). Interface: `docs/architecture/12-plugins.md` and `docs/guides/plugin-api.md` in the Uzume repository.
+- Plugin API v1 ships with Uzume since 0.11. What this plugin needs (core cheats, run rule `rules.cheats`, the `cheats` permission with `fb.cheats.*`, the plugin user store, the cheat database) is planned in Uzume 0.20 and not built yet; everything here is design until it exists. Open API items are marked open, never invented.
+- Runtime: Lua 5.4 in the Uzume sandbox; UI only as declarative building blocks (no QML).
 
 ## Working rules
 
@@ -39,4 +39,4 @@ framebeam-plugin-cheats is a generic cheats plugin for all games. It manages che
 ## Pointers
 
 - Plan and status: `docs/roadmap.md`. Workflow, roles and brief template: `docs/workflow.md`.
-- FrameBeam docs: https://github.com/phabioo/framebeam (`docs/architecture/12-plugins.md`, `docs/adr/0023-plugins.md`).
+- Uzume docs: https://github.com/phabioo/uzume (`docs/roadmap.md` section 0.20, `docs/guides/plugin-api.md`, `docs/architecture/12-plugins.md`, `docs/adr/0023-plugins.md`).

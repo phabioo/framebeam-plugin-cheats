@@ -1,10 +1,12 @@
-# FrameBeam Plugin: Cheats
+# Uzume Plugin: Cheats
 
-Cheat lists per game for FrameBeam, applied through memory writes.
+Cheat lists per game for Uzume, applied through the cores' own cheat engines.
 
 Status: **planned, nothing implemented.**
 
-Requires FrameBeam with plugin API v1 (FrameBeam 0.11, planned). Part of [FrameBeam](https://github.com/phabioo/framebeam); plugin interface: `docs/architecture/12-plugins.md` there. Plan: [docs/roadmap.md](docs/roadmap.md).
+Requires Uzume 0.20 (core cheats and the `cheats` plugin permission, planned; [Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md)). Part of [Uzume](https://github.com/phabioo/uzume); design: [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md), plugin API: `docs/guides/plugin-api.md` there. Plan: [docs/roadmap.md](docs/roadmap.md).
+
+Every PR description needs a `## Changelog` section (see `.github/pull_request_template.md`); CI checks it with `tools/changelog.py`, and releases should build their notes from these sections.
 
 License: GPL-3.0-or-later, see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). Contributions under the [CLA](CLA.md).
 
