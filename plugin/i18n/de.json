@@ -123,6 +123,8 @@
   "db_off_text": "Admins schalten sie unter Server › Einstellungen › Cheat-Datenbank ein.",
   "db_offline_title": "Der Server ist nicht erreichbar",
   "db_offline_text": "Uzume nutzt die zuletzt geladene Kopie, falls es eine gibt. Versuch es gleich noch einmal.",
+  "db_unavailable_title": "Cheat-Datenbank nicht bereit",
+  "db_unavailable_text": "Der Server hat die Cheat-Datenbank eingeschaltet, aber noch keine Listen. Bitte einen Admin, Server › Einstellungen › Cheat-Datenbank zu prüfen.",
   "db_error_title": "Die Cheat-Datenbank hat nicht geantwortet",
   "consent_waiting": "Wartet auf deine Antwort in der App.",
   "run_allowed_toast": "Cheats sind in diesem Run erlaubt.",

@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: v0.1.1 fixes the plugin-side findings of the live check of Uzume 0.20 package 5 (below); v0.1.0 was implemented against the 0.20 API contract and tested with a fake `fb` only. Part of Uzume milestone 0.20 "Emulation", section "Cheats" ([Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md), design [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md)).
+Status: v0.1.2 shows an own empty state for `unavailable`; v0.1.1 fixes the plugin-side findings of the live check of Uzume 0.20 package 5 (below); v0.1.0 was implemented against the 0.20 API contract and tested with a fake `fb` only. Part of Uzume milestone 0.20 "Emulation", section "Cheats" ([Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md), design [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md)).
 
 ## Before this plugin
 
@@ -25,6 +25,10 @@ Built in v0.1.0:
 - Formats `raw`, `gsa`, `cb`, `ar_gba`, `ar_ds`, `game_genie`, `gateway`: validation, detection by system, normalizing (`src/model/formats.lua`).
 - Lists per game in `fb.store` key `cheats.<game code>` with revisions; on conflict both versions are merged by cheat id (deleted cheats stay deleted, a cheat changed on both sides is kept twice).
 - Every toggle, edit and removal sends the full list of enabled supported cheats with `fb.cheats.apply`; hotkeys Ctrl+Alt+C (add) and Ctrl+Alt+X (all off).
+
+## v0.1.2
+
+- `fb.cheats.database()` answering `nil, "unavailable"` (database on, no lists yet: not loaded or last update failed) is its own problem `unavailable`: warning empty state "Cheat database not ready" with the admin hint and Retry (was shown as a raw error).
 
 ## v0.1.1 (live-check fixes)
 

@@ -80,7 +80,7 @@ end
 function M.new(opts)
   opts = opts or {}
   local mock = { logs = {}, handlers = {}, notes = {}, opened = {}, closed = 0 }
-  local fb = { api = 1, plugin = { id = "uzume.cheats", version = "0.1.1" } }
+  local fb = { api = 1, plugin = { id = "uzume.cheats", version = "0.1.2" } }
   mock.fb = fb
   fb.game = opts.game or { system = "gba", code = "AXVE", title = "Lumen Drift" }
   if opts.language then fb.game.language = opts.language end

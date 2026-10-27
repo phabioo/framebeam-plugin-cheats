@@ -123,6 +123,8 @@
   "db_off_text": "Admins turn it on in Server › Settings › Cheat database.",
   "db_offline_title": "The server can't be reached",
   "db_offline_text": "Uzume uses the last downloaded copy when there is one. Try again in a moment.",
+  "db_unavailable_title": "Cheat database not ready",
+  "db_unavailable_text": "The server has the cheat database turned on but has no lists yet. Ask an admin to check Server › Settings › Cheat database.",
   "db_error_title": "The cheat database didn't answer",
   "consent_waiting": "Waiting for your answer in the app.",
   "run_allowed_toast": "Cheats are allowed in this run.",

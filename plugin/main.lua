@@ -1589,6 +1589,7 @@ function D.db_problem(msg)
   if msg == "off" or msg == "offline" then return msg, nil end
   if msg == "loading" or msg == "error: loading" then return "loading", nil end
   if msg == "not_found" then return "none", nil end
+  if msg == "unavailable" then return "unavailable", nil end -- on, but no lists yet (not loaded or last update failed)
   return "error", (msg:gsub("^error:%s*", ""))
 end
 
@@ -1604,7 +1605,7 @@ local function db_page(v)
     local body
     if key == "error" then body = util.clip(db.message or "", 200) end
     local e = { type = "empty", id = "db_problem", title = t("db_" .. key .. "_title"),
-      text = body or t("db_" .. key .. "_text"), tone = key == "error" and "danger" or nil }
+      text = body or t("db_" .. key .. "_text"), tone = key == "error" and "danger" or key == "unavailable" and "warning" or nil }
     if key ~= "off" then e.action_label, e.action = t("db_retry"), "db_retry" end -- turning it on is the admin's job
     kids[#kids + 1] = e
     return { type = "column", gap = 8, children = kids }
