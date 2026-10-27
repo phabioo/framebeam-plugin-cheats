@@ -33,7 +33,7 @@ uzume-plugin-cheats is a generic cheats plugin for all games. It manages cheat c
 
 ## Status and commands
 
-- Status: v0.1.1 (live-check fixes: consent pending/allowed/denied handling, database loading state and `cheats.database` event, empty state, accessible toggle names, shorter chips, database page with buttons, import and hint wording, toast on a run rule change); v0.1.0 (cheats tab, add/import dialog, cheat database, per-game lists in `fb.store`, `fb.cheats.apply`; de/en). Layout: `docs/architecture.md`.
+- Status: v0.1.1 (live-check fixes: consent pending/allowed/denied handling, database loading state and `cheats.database` event, empty state, shorter chips, dialog-width "Add cheats" sheet (needs Uzume with 0.20 package 6), database page with buttons, import and hint wording, toast on a run rule change); v0.1.0 (cheats tab, add/import dialog, cheat database, per-game lists in `fb.store`, `fb.cheats.apply`; de/en). Layout: `docs/architecture.md`.
 - Sources are modules in `src/`; `lua5.4 tools/bundle.lua` generates the committed `plugin/main.lua` (list new modules in `src/modules.txt`; `--check` fails when stale). Tests: `lua5.4 tests/run.lua` (fake `fb` in `tests/support/fb_mock.lua`, `fb.ui` validator). Package: `python3 -I tools/package.py [--out DIR]`, verify with `--verify FILE`; a tag `vX.Y.Z` builds the `.fbplugin` release asset (`.github/workflows/release.yml`). Changelog tool tests: `python3 -I -m unittest discover -s tests/tools`.
 - The SessionStart hook `.claude/hooks/session-start.sh` only prepares cloud sessions (installs `lua5.4` via apt if missing).
 

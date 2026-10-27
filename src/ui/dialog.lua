@@ -91,7 +91,7 @@ local function enter_page(v)
     buttons[#buttons + 1] = { type = "button", id = "btn_confirm", label = dlg.editing and t("save_cheat") or t("add_cheat"),
       action = "confirm_add", variant = "primary" }
   end
-  buttons[#buttons + 1] = { type = "button", id = "btn_cancel", label = t("cancel"), action = "dlg_close", variant = "quiet" }
+  buttons[#buttons + 1] = { type = "button", id = "btn_cancel", label = t("cancel"), action = "dlg_close", variant = "secondary" }
   kids[#kids + 1] = { type = "row", gap = 8, align = "center", children = buttons }
   if not a.ready then
     kids[#kids + 1] = text(a.name_state == "empty" and t("need_name") or fix_hint(t, a.chk and a.chk.errors), "meta", nil, { id = "not_ready" })
@@ -274,11 +274,11 @@ function D.build(v)
       { type = "button", id = "btn_again", label = t("add_more"), action = "dlg_again", variant = "secondary" },
       { type = "button", id = "btn_close", label = t("close"), action = "dlg_close", variant = "primary" },
     } }
-    return { type = "column", gap = 12, children = head }
+    return { type = "column", gap = 12, width = "dialog", children = head }
   end
   if dlg.editing then
     head[#head + 1] = enter_page(v)
-    return { type = "column", gap = 12, children = head }
+    return { type = "column", gap = 12, width = "dialog", children = head }
   end
   local tabs = { t("tab_enter"), t("tab_import"), t("tab_database") }
   local empty = { type = "column", children = {} }
@@ -287,7 +287,7 @@ function D.build(v)
   elseif dlg.tab == 2 then pages[2] = import_page(v)
   else pages[3] = db_page(v) end
   head[#head + 1] = { type = "tabs", id = "dlg_tabs", tabs = tabs, selected = dlg.tab, action = "dlg_tab", children = pages }
-  return { type = "column", gap = 12, children = head }
+  return { type = "column", gap = 12, width = "dialog", children = head }
 end
 
 return D
