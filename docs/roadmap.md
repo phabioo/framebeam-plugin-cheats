@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: v0.1.0 implemented against the 0.20 API contract and tested with a fake `fb` only; the live check in Uzume starts when the app side (plan 0.20, package 5) is on main. Part of Uzume milestone 0.20 "Emulation", section "Cheats" ([Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md), design [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md)).
+Status: v0.1.1 fixes the plugin-side findings of the live check of Uzume 0.20 package 5 (below); v0.1.0 was implemented against the 0.20 API contract and tested with a fake `fb` only. Part of Uzume milestone 0.20 "Emulation", section "Cheats" ([Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md), design [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md)).
 
 ## Before this plugin
 
@@ -25,5 +25,16 @@ Built in v0.1.0:
 - Formats `raw`, `gsa`, `cb`, `ar_gba`, `ar_ds`, `game_genie`, `gateway`: validation, detection by system, normalizing (`src/model/formats.lua`).
 - Lists per game in `fb.store` key `cheats.<game code>` with revisions; on conflict both versions are merged by cheat id (deleted cheats stay deleted, a cheat changed on both sides is kept twice).
 - Every toggle, edit and removal sends the full list of enabled supported cheats with `fb.cheats.apply`; hotkeys Ctrl+Alt+C (add) and Ctrl+Alt+X (all off).
+
+## v0.1.1 (live-check fixes)
+
+Source: live check of Uzume 0.20 package 5 (findings F1 to F25, plugin side).
+
+- F1: `fb.cheats.apply` answering `consent_required` keeps the toggle on with a "Waiting for your answer in the app." line and no toast; `cheats.allowed` (no run rule involved) ends the wait, `cheats.blocked` with `consent_denied` (or an apply answering `consent_denied`) turns off exactly the cheats that waited.
+- F2: `fb.cheats.database()` answering `error: loading` shows "Looking up ..." (not the red error); the event `cheats.database` reloads the page.
+- F6 empty state offers "Cheat database" as the second button; F9 chips "Edit" and "All off".
+- F11 database page: "Add all N" and search above the list, a real "Add" button per row, "Show N more" button. F12: state `off` has no retry; path "Server › Settings › Cheat database".
+- F22: import says how many entries could not be read and uses singular forms; F8: hint names the lines ("Fix lines 2 and 3 to add it."); F25: toast "Cheats are allowed in this run." when a run rule (or "Check again") switches cheats back on.
+- Not done: F23 (no scroll or select call in the plugin UI API to reach the Imported group; the sheet closes and the toast names the group).
 
 Open for the live check (see the Uzume plan 0.20): exact `textarea` action naming, `fb.ui.pick_file` callback shape, `fb.cheats.database()` result shape is an assumption marked in the code; the consent dialog (11d), run rule screens (11e to 11g) and database setting (11h) belong to the app.

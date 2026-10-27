@@ -52,6 +52,7 @@ function C.new(fb)
   self.limits = {}
   self.rejected = {}
   self.pending = {} -- id -> clock of the last turn-on
+  self.awaiting = {} -- id -> true while the app asks the person for consent
   self.blocked = nil
   self.note = nil
   self.dlg = nil
@@ -85,7 +86,7 @@ function C:view()
   local list = self.list
   return {
     t = self.t, state = "ok", game_title = self.game_title, on_count = library.on_count(list),
-    blocked = self.blocked ~= nil, supported = function(f) return self:supported(f) end,
+    blocked = self.blocked ~= nil, awaiting = next(self.awaiting) ~= nil, supported = function(f) return self:supported(f) end,
     core_name = self.core_name, rejected = self.rejected, edit = self.edit, query = self.query,
     groups = library.groups(list, self.query), total = #list, limits = self.limits, page = PAGE, note = self.note,
   }
@@ -184,16 +185,21 @@ function C:apply()
   local list = self:active_list()
   local res, msg, raised = try(fb.cheats.apply, list)
   self.rejected = {}
+  if res ~= nil then self.awaiting, self.consent_wait = {}, false end
   if raised then
     fb.log.warn("cheats.apply failed: " .. tostring(msg))
     return
   end
   if res == nil then
     msg = tostring(msg or "")
-    if msg:find("run_rule", 1, true) or msg:find("blocked", 1, true) then
-      self:set_blocked("run_rule")
-    elseif msg:find("consent", 1, true) then
+    if msg:find("consent_required", 1, true) then
+      -- the app asks the person and applies the list itself on Allow; cheats.blocked follows on Deny
+      for _, a in ipairs(list) do self.awaiting[a.id] = true end
+      self.consent_wait = true
+    elseif msg:find("consent_denied", 1, true) then
       self:consent_denied()
+    elseif msg:find("run_rule", 1, true) or msg:find("blocked", 1, true) then
+      self:set_blocked("run_rule")
     else
       self.note = self.t("note_apply_failed", { reason = util.clip(msg, 80) })
     end
@@ -224,28 +230,44 @@ function C:set_blocked(reason)
   for _, e in ipairs(self.list) do
     if e.enabled then e.enabled, changed = false, true end
   end
-  self.pending = {}
+  self.pending, self.awaiting, self.consent_wait = {}, {}, false
   if changed then self:persist() end
   if type(self.fb.cheats.clear) == "function" then try(self.fb.cheats.clear) end
   self:render()
 end
 
 function C:consent_denied()
-  local now = self.fb.clock()
+  if self.denying then return end
   local reverted = false
-  for id, at in pairs(self.pending) do
+  for id in pairs(self.awaiting) do
     local e = library.find(self.list, id)
-    if e and e.enabled and now - at <= PENDING_MS then e.enabled, reverted = false, true end
+    if e and e.enabled then e.enabled, reverted = false, true end
   end
   if not reverted then
-    for _, e in ipairs(self.list) do
-      if e.enabled then e.enabled, reverted = false, true end
+    -- no consent question was seen: undo the latest turn-ons, else everything that is on
+    local now = self.fb.clock()
+    for id, at in pairs(self.pending) do
+      local e = library.find(self.list, id)
+      if e and e.enabled and now - at <= PENDING_MS then e.enabled, reverted = false, true end
+    end
+    if not reverted then
+      for _, e in ipairs(self.list) do
+        if e.enabled then e.enabled, reverted = false, true end
+      end
     end
   end
-  self.pending = {}
+  self.awaiting, self.consent_wait, self.pending = {}, false, {}
   if reverted then self:persist() end
   self:notify({ tone = "info", text = self.t("consent_denied_toast") })
+  self.denying = true
   self:apply()
+  self.denying = false
+  self:render()
+end
+
+--- The person allowed cheats in the consent question: the app applies the list itself; the toggles stay on.
+function C:consent_allowed()
+  self.awaiting, self.consent_wait = {}, false
   self:render()
 end
 
@@ -255,8 +277,10 @@ function C:recheck()
   if state == "off" then
     self:set_blocked("run_rule")
   else
+    local was = self.blocked ~= nil
     self.blocked = nil
     self:render()
+    if was then self:notify({ tone = "info", text = self.t("run_allowed_toast") }) end
   end
 end
 
@@ -271,7 +295,7 @@ function C:set_enabled(id, on)
   if on then self.pending[id] = self.fb.clock() else self.pending[id] = nil end
   self:persist()
   self:apply()
-  if on and e.enabled and not self.blocked then
+  if on and e.enabled and not self.blocked and not self.consent_wait then
     self:notify({ tone = "info", text = self.t("is_on", { name = util.clip(e.name, 120) }),
       actions = { { label = self.t("turn_off"), action = "toast_off", value = id } } })
   end
@@ -422,7 +446,8 @@ function C:on_file(content, info)
   local name = type(info) == "table" and info.name or (type(info) == "string" and info) or nil
   local size = type(info) == "table" and info.size or #content
   local parsed = importer.parse(content, self.system)
-  local imp = { name = name and name:upper() or t("file_unnamed"), size = size, cheats = parsed.cheats, selected = {}, shown = 40 }
+  local imp = { name = name and name:upper() or t("file_unnamed"), size = size, cheats = parsed.cheats, selected = {}, shown = 40,
+    dropped = parsed.dropped or 0 }
   for i, c in ipairs(parsed.cheats) do
     if not c.invalid and self:supported(c.format) then imp.selected[i] = true end
   end
@@ -456,6 +481,11 @@ function C:load_db()
     return
   end
   local ok, res, msg = pcall(fn)
+  if ok and type(res) ~= "table" and dialog.db_problem(msg) == "loading" then
+    db.problem = "loading"
+    dlg.db = db
+    return
+  end
   if not ok then
     db.problem, db.message = "error", tostring(res)
   elseif type(res) ~= "table" then
@@ -479,6 +509,16 @@ function C:load_db()
   end
   dlg.db = db
   self:mark_db_added()
+end
+
+--- Event cheats.database: new data for fb.cheats.database(); reload when the database page is waiting or open.
+function C:on_database()
+  local dlg = self.dlg
+  if not dlg or dlg.editing then return end
+  if dlg.db or dlg.tab == 3 then
+    self:load_db()
+    self:render_screen()
+  end
 end
 
 function C:mark_db_added()
@@ -573,7 +613,7 @@ function C:on_action(action, value, slot)
     return
   elseif action == "dlg_tab" then
     dlg.tab = math.max(1, math.min(3, tonumber(value) or 1))
-    if dlg.tab == 3 and not dlg.db then self:load_db() end
+    if dlg.tab == 3 and (not dlg.db or dlg.db.problem == "loading") then self:load_db() end
     self:render_screen()
   elseif action == "fmt" then
     dlg.fmt = (value == "auto" or formats.known(value)) and value or "auto"
@@ -658,7 +698,10 @@ function C:start()
     if reason == "consent_denied" then self:consent_denied()
     else self:set_blocked("run_rule") end
   end)
-  fb.events.on("app", "cheats.allowed", function() self:recheck() end)
+  fb.events.on("app", "cheats.allowed", function()
+    if self.consent_wait or next(self.awaiting) ~= nil then self:consent_allowed() else self:recheck() end
+  end)
+  fb.events.on("app", "cheats.database", function() self:on_database() end)
 
   if self:rule_state() == "off" then
     self.blocked = "run_rule"
@@ -916,7 +959,8 @@ return F
 end
 __mod["model.importer"] = function(...)
 -- Reads cheat files: RetroArch .cht and text files (Gateway `[Name]` blocks, plain AR/GS text).
--- Pure Lua. parse(content, system) -> { kind = "cht"|"txt", cheats = { {name=, lines=, code=, format=} }, bad = n }
+-- Pure Lua. parse(content, system) -> { kind = "cht"|"txt", cheats = { {name=, lines=, code=, format=} }, bad = n,
+-- dropped = n } (`dropped`: entries with a name but no readable code, left out of `cheats`)
 local util = require("model.util")
 local formats = require("model.formats")
 
@@ -968,9 +1012,10 @@ function I.parse_cht(content, system)
       end
     end
   end
-  local out, bad = {}, 0
+  local out, bad, dropped = {}, 0, 0
   for n = 0, max_index do
     local c = by_index[n]
+    if c and (c.code or c.desc) and not (c.code and util.trim(c.code) ~= "") then dropped = dropped + 1 end
     if c and (c.code or c.desc) and c.code and util.trim(c.code) ~= "" then
       local raw = {}
       for part in (c.code:gsub("[%+\n]", "\n")):gmatch("[^\n]+") do
@@ -982,7 +1027,7 @@ function I.parse_cht(content, system)
       out[#out + 1] = e
     end
   end
-  return { kind = "cht", cheats = out, bad = bad }
+  return { kind = "cht", cheats = out, bad = bad, dropped = dropped }
 end
 
 --- A line of hex digits that is not a valid code (a broken code, not a name).
@@ -992,9 +1037,10 @@ function I.looks_like_code(line)
 end
 
 function I.parse_txt(content, system)
-  local blocks, cur = {}, nil
+  local blocks, cur, dropped = {}, nil, 0
   local function flush()
-    if cur and #cur.lines > 0 then blocks[#blocks + 1] = cur end
+    if cur and #cur.lines > 0 then blocks[#blocks + 1] = cur
+    elseif cur then dropped = dropped + 1 end -- a name or header without a readable code
     cur = nil
   end
   for _, raw in ipairs(util.lines(content)) do
@@ -1029,7 +1075,7 @@ function I.parse_txt(content, system)
     if e.invalid then bad = bad + 1 end
     out[#out + 1] = e
   end
-  return { kind = "txt", cheats = out, bad = bad }
+  return { kind = "txt", cheats = out, bad = bad, dropped = dropped }
 end
 
 --- Picks the parser by content.
@@ -1373,6 +1419,21 @@ local function line_error(t, e)
 end
 D.line_error = line_error
 
+--- "Fix line 2 to add it." / "Fix lines 2 and 3 to add it." (the code field has no line markers)
+local function fix_hint(t, errors)
+  local nums, seen = {}, {}
+  for _, e in ipairs(errors or {}) do
+    if e.n and not seen[e.n] then seen[e.n] = true; nums[#nums + 1] = e.n end
+  end
+  table.sort(nums)
+  if #nums == 0 then return t("fix_to_add") end
+  if #nums == 1 then return t("fix_line", { lines = nums[1] }) end
+  local head = {}
+  for i = 1, #nums - 1 do head[i] = tostring(nums[i]) end
+  return t("fix_lines", { lines = t("lines_and", { head = table.concat(head, ", "), last = nums[#nums] }) })
+end
+D.fix_hint = fix_hint
+
 local function enter_page(v)
   local t, dlg = v.t, v.dlg
   local a = v.analysis
@@ -1431,7 +1492,7 @@ local function enter_page(v)
   buttons[#buttons + 1] = { type = "button", id = "btn_cancel", label = t("cancel"), action = "dlg_close", variant = "quiet" }
   kids[#kids + 1] = { type = "row", gap = 8, align = "center", children = buttons }
   if not a.ready then
-    kids[#kids + 1] = text(a.name_state == "empty" and t("need_name") or t("fix_to_add"), "meta", nil, { id = "not_ready" })
+    kids[#kids + 1] = text(a.name_state == "empty" and t("need_name") or fix_hint(t, a.chk and a.chk.errors), "meta", nil, { id = "not_ready" })
   end
   return { type = "column", gap = 8, children = kids }
 end
@@ -1470,9 +1531,15 @@ local function import_page(v)
   } }
   if #cheats == 0 then
     kids[#kids + 1] = { type = "empty", id = "imp_none", title = t("imp_none_title"), text = t("imp_hint") }
+    if (imp.dropped or 0) > 0 then
+      kids[#kids + 1] = text(t(imp.dropped == 1 and "dropped_one" or "dropped_n", { n = imp.dropped }), "meta", "warning", { id = "dropped" })
+    end
     return { type = "column", gap = 8, children = kids }
   end
   kids[#kids + 1] = text(t("found_n", { found = #cheats, usable = usable, core = v.core_name }), "body", nil, { id = "found" })
+  if (imp.dropped or 0) > 0 then
+    kids[#kids + 1] = text(t(imp.dropped == 1 and "dropped_one" or "dropped_n", { n = imp.dropped }), "meta", "warning", { id = "dropped" })
+  end
   if usable > 0 then
     kids[#kids + 1] = { type = "toggle", id = "tg_all", action = "imp_all", label = t("imp_all", { n = usable }),
       checked = selected == usable }
@@ -1507,10 +1574,10 @@ local function import_page(v)
       if imp.selected[i] and seen[c.name:lower()] then dup = dup + 1 end
     end
     if dup > 0 then
-      kids[#kids + 1] = text(t("names_exist", { n = dup }), "meta", "warning", { id = "dups" })
+      kids[#kids + 1] = text(t(dup == 1 and "names_exist_one" or "names_exist", { n = dup }), "meta", "warning", { id = "dups" })
       kids[#kids + 1] = text(t("keep_both"), "meta")
     end
-    kids[#kids + 1] = { type = "button", id = "btn_import", label = t("import_n", { n = selected }), action = "import_go",
+    kids[#kids + 1] = { type = "button", id = "btn_import", label = t(selected == 1 and "import_one" or "import_n", { n = selected }), action = "import_go",
       variant = "primary" }
   end
   return { type = "column", gap = 8, children = kids }
@@ -1520,6 +1587,7 @@ end
 function D.db_problem(msg)
   msg = tostring(msg or "")
   if msg == "off" or msg == "offline" then return msg, nil end
+  if msg == "loading" or msg == "error: loading" then return "loading", nil end
   if msg == "not_found" then return "none", nil end
   return "error", (msg:gsub("^error:%s*", ""))
 end
@@ -1527,7 +1595,7 @@ end
 local function db_page(v)
   local t, db = v.t, v.dlg.db
   local kids = {}
-  if not db then
+  if not db or db.problem == "loading" then
     kids[#kids + 1] = text(t("db_looking", { game = v.game_title }), "meta", nil, { id = "db_looking" })
     return { type = "column", gap = 8, children = kids }
   end
@@ -1535,9 +1603,10 @@ local function db_page(v)
     local key = db.problem
     local body
     if key == "error" then body = util.clip(db.message or "", 200) end
-    kids[#kids + 1] = { type = "empty", id = "db_problem", title = t("db_" .. key .. "_title"),
-      text = body or t("db_" .. key .. "_text"), tone = key == "error" and "danger" or nil,
-      action_label = t("db_retry"), action = "db_retry" }
+    local e = { type = "empty", id = "db_problem", title = t("db_" .. key .. "_title"),
+      text = body or t("db_" .. key .. "_text"), tone = key == "error" and "danger" or nil }
+    if key ~= "off" then e.action_label, e.action = t("db_retry"), "db_retry" end -- turning it on is the admin's job
+    kids[#kids + 1] = e
     return { type = "column", gap = 8, children = kids }
   end
   kids[#kids + 1] = text(t("db_matched", { game = v.game_title, system = tostring(v.system or ""):upper() }), "eyebrow")
@@ -1545,8 +1614,6 @@ local function db_page(v)
     kids[#kids + 1] = text(t("db_source", { source = util.clip(tostring(db.source), 60),
       date = util.clip(tostring(db.updated_at or "?"), 24) }), "meta", nil, { id = "db_source" })
   end
-  kids[#kids + 1] = { type = "textfield", id = "db_search", action = "db_search", live = true, text = db.query or "",
-    placeholder = t("search_placeholder") }
   local rows, visible, addable = {}, 0, 0
   local q = util.trim(db.query or ""):lower()
   for i, c in ipairs(db.cheats) do
@@ -1557,38 +1624,38 @@ local function db_page(v)
     if q == "" or c.name:lower():find(q, 1, true) then
       visible = visible + 1
       if visible <= (db.shown or 50) then
-        local row = { id = "d" .. i, title = c.name }
+        local kids_row = { text(c.name, "body", nil, { wrap = true }), { type = "badge", text = tag } }
         if added then
-          row.meta = tag .. " · " .. t("db_added")
-          row.tone = "ok"
+          kids_row[#kids_row + 1] = { type = "badge", text = t("db_added"), tone = "ok" }
         elseif not ok then
-          row.meta = tag .. " · " .. t("not_supported_short")
-          row.tone = "warning"
+          kids_row[#kids_row + 1] = text(t("not_supported_short"), "meta", "warning")
         else
-          row.meta = tag .. " · " .. t("db_add")
-          row.action, row.value = "db_add", i
+          kids_row[#kids_row + 1] = { type = "button", id = "btn_d" .. i, label = t("db_add"), action = "db_add", value = i,
+            variant = "secondary" }
         end
-        rows[#rows + 1] = row
+        rows[#rows + 1] = { type = "row", id = "d" .. i, gap = 8, align = "center", children = kids_row }
       end
     end
   end
+  -- Add all and the search stay above the rows
+  if addable > 0 then
+    kids[#kids + 1] = { type = "button", id = "btn_db_all", label = t("db_add_all", { n = addable }),
+      action = "db_add_all", variant = "primary" }
+  end
+  kids[#kids + 1] = { type = "textfield", id = "db_search", action = "db_search", live = true, text = db.query or "",
+    placeholder = t("search_placeholder") }
   if visible == 0 then
     kids[#kids + 1] = { type = "empty", id = "db_nomatch", title = t("no_match", { query = db.query or "" }),
       action_label = t("clear_search"), action = "db_search_clear" }
   else
-    kids[#kids + 1] = { type = "list", id = "db_list", rows = rows }
+    kids[#kids + 1] = { type = "column", id = "db_list", gap = 6, children = rows }
   end
   if visible > (db.shown or 50) then
-    kids[#kids + 1] = { type = "button", id = "btn_db_more", label = t("and_n_more", { n = visible - (db.shown or 50) }),
-      action = "db_more", variant = "quiet" }
+    kids[#kids + 1] = { type = "button", id = "btn_db_more", label = t("show_more", { n = visible - (db.shown or 50) }),
+      action = "db_more", variant = "secondary" }
   end
-  local buttons = {}
-  if addable > 0 then
-    buttons[#buttons + 1] = { type = "button", id = "btn_db_all", label = t("db_add_all", { n = addable }),
-      action = "db_add_all", variant = "primary" }
-  end
-  buttons[#buttons + 1] = { type = "button", id = "btn_close", label = t("close"), action = "dlg_close", variant = "quiet" }
-  kids[#kids + 1] = { type = "row", gap = 8, align = "center", children = buttons }
+  kids[#kids + 1] = { type = "row", gap = 8, align = "center", children = {
+    { type = "button", id = "btn_close", label = t("close"), action = "dlg_close", variant = "quiet" } } }
   return { type = "column", gap = 8, children = kids }
 end
 
@@ -1704,6 +1771,10 @@ function P.build(v)
   end
   local kids = { { type = "row", gap = 8, align = "center", children = header } }
 
+  if v.awaiting and not v.blocked then
+    kids[#kids + 1] = text(t("consent_waiting"), "meta", nil, { id = "waiting" })
+  end
+
   if v.blocked then
     kids[#kids + 1] = { type = "card", id = "blocked", eyebrow = t("blocked_title"), children = {
       text(t("blocked_text"), "meta"),
@@ -1717,7 +1788,7 @@ function P.build(v)
 
   if v.total == 0 then
     kids[#kids + 1] = { type = "empty", id = "empty_none", title = t("empty_title", { game = v.game_title }),
-      text = t("empty_text"), action_label = t("add_cheat"), action = "add" }
+      text = t("empty_text"), action_label = t("cheat_database"), action = "open_db" }
   else
     kids[#kids + 1] = { type = "textfield", id = "search", action = "search", live = true, text = v.query,
       placeholder = t("search_placeholder") }

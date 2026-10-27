@@ -80,7 +80,7 @@ end
 function M.new(opts)
   opts = opts or {}
   local mock = { logs = {}, handlers = {}, notes = {}, opened = {}, closed = 0 }
-  local fb = { api = 1, plugin = { id = "uzume.cheats", version = "0.1.0" } }
+  local fb = { api = 1, plugin = { id = "uzume.cheats", version = "0.1.1" } }
   mock.fb = fb
   fb.game = opts.game or { system = "gba", code = "AXVE", title = "Lumen Drift" }
   if opts.language then fb.game.language = opts.language end
@@ -225,7 +225,7 @@ function M.new(opts)
       end,
       clear = function() mock.cheats.clears = mock.cheats.clears + 1; mock.cheats.applied = {} end,
       database = function()
-        local d = opts.database
+        local d = mock.database ~= nil and mock.database or opts.database
         if d == nil then return nil, "not_found" end
         if d[1] == nil and d[2] ~= nil then return nil, d[2] end
         return deep_copy(d)
