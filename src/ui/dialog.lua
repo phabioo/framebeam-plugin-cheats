@@ -21,6 +21,21 @@ local function line_error(t, e)
 end
 D.line_error = line_error
 
+--- "Fix line 2 to add it." / "Fix lines 2 and 3 to add it." (the code field has no line markers)
+local function fix_hint(t, errors)
+  local nums, seen = {}, {}
+  for _, e in ipairs(errors or {}) do
+    if e.n and not seen[e.n] then seen[e.n] = true; nums[#nums + 1] = e.n end
+  end
+  table.sort(nums)
+  if #nums == 0 then return t("fix_to_add") end
+  if #nums == 1 then return t("fix_line", { lines = nums[1] }) end
+  local head = {}
+  for i = 1, #nums - 1 do head[i] = tostring(nums[i]) end
+  return t("fix_lines", { lines = t("lines_and", { head = table.concat(head, ", "), last = nums[#nums] }) })
+end
+D.fix_hint = fix_hint
+
 local function enter_page(v)
   local t, dlg = v.t, v.dlg
   local a = v.analysis
@@ -79,7 +94,7 @@ local function enter_page(v)
   buttons[#buttons + 1] = { type = "button", id = "btn_cancel", label = t("cancel"), action = "dlg_close", variant = "quiet" }
   kids[#kids + 1] = { type = "row", gap = 8, align = "center", children = buttons }
   if not a.ready then
-    kids[#kids + 1] = text(a.name_state == "empty" and t("need_name") or t("fix_to_add"), "meta", nil, { id = "not_ready" })
+    kids[#kids + 1] = text(a.name_state == "empty" and t("need_name") or fix_hint(t, a.chk and a.chk.errors), "meta", nil, { id = "not_ready" })
   end
   return { type = "column", gap = 8, children = kids }
 end
@@ -118,9 +133,15 @@ local function import_page(v)
   } }
   if #cheats == 0 then
     kids[#kids + 1] = { type = "empty", id = "imp_none", title = t("imp_none_title"), text = t("imp_hint") }
+    if (imp.dropped or 0) > 0 then
+      kids[#kids + 1] = text(t(imp.dropped == 1 and "dropped_one" or "dropped_n", { n = imp.dropped }), "meta", "warning", { id = "dropped" })
+    end
     return { type = "column", gap = 8, children = kids }
   end
   kids[#kids + 1] = text(t("found_n", { found = #cheats, usable = usable, core = v.core_name }), "body", nil, { id = "found" })
+  if (imp.dropped or 0) > 0 then
+    kids[#kids + 1] = text(t(imp.dropped == 1 and "dropped_one" or "dropped_n", { n = imp.dropped }), "meta", "warning", { id = "dropped" })
+  end
   if usable > 0 then
     kids[#kids + 1] = { type = "toggle", id = "tg_all", action = "imp_all", label = t("imp_all", { n = usable }),
       checked = selected == usable }
@@ -155,10 +176,10 @@ local function import_page(v)
       if imp.selected[i] and seen[c.name:lower()] then dup = dup + 1 end
     end
     if dup > 0 then
-      kids[#kids + 1] = text(t("names_exist", { n = dup }), "meta", "warning", { id = "dups" })
+      kids[#kids + 1] = text(t(dup == 1 and "names_exist_one" or "names_exist", { n = dup }), "meta", "warning", { id = "dups" })
       kids[#kids + 1] = text(t("keep_both"), "meta")
     end
-    kids[#kids + 1] = { type = "button", id = "btn_import", label = t("import_n", { n = selected }), action = "import_go",
+    kids[#kids + 1] = { type = "button", id = "btn_import", label = t(selected == 1 and "import_one" or "import_n", { n = selected }), action = "import_go",
       variant = "primary" }
   end
   return { type = "column", gap = 8, children = kids }
@@ -168,6 +189,7 @@ end
 function D.db_problem(msg)
   msg = tostring(msg or "")
   if msg == "off" or msg == "offline" then return msg, nil end
+  if msg == "loading" or msg == "error: loading" then return "loading", nil end
   if msg == "not_found" then return "none", nil end
   return "error", (msg:gsub("^error:%s*", ""))
 end
@@ -175,7 +197,7 @@ end
 local function db_page(v)
   local t, db = v.t, v.dlg.db
   local kids = {}
-  if not db then
+  if not db or db.problem == "loading" then
     kids[#kids + 1] = text(t("db_looking", { game = v.game_title }), "meta", nil, { id = "db_looking" })
     return { type = "column", gap = 8, children = kids }
   end
@@ -183,9 +205,10 @@ local function db_page(v)
     local key = db.problem
     local body
     if key == "error" then body = util.clip(db.message or "", 200) end
-    kids[#kids + 1] = { type = "empty", id = "db_problem", title = t("db_" .. key .. "_title"),
-      text = body or t("db_" .. key .. "_text"), tone = key == "error" and "danger" or nil,
-      action_label = t("db_retry"), action = "db_retry" }
+    local e = { type = "empty", id = "db_problem", title = t("db_" .. key .. "_title"),
+      text = body or t("db_" .. key .. "_text"), tone = key == "error" and "danger" or nil }
+    if key ~= "off" then e.action_label, e.action = t("db_retry"), "db_retry" end -- turning it on is the admin's job
+    kids[#kids + 1] = e
     return { type = "column", gap = 8, children = kids }
   end
   kids[#kids + 1] = text(t("db_matched", { game = v.game_title, system = tostring(v.system or ""):upper() }), "eyebrow")
@@ -193,8 +216,6 @@ local function db_page(v)
     kids[#kids + 1] = text(t("db_source", { source = util.clip(tostring(db.source), 60),
       date = util.clip(tostring(db.updated_at or "?"), 24) }), "meta", nil, { id = "db_source" })
   end
-  kids[#kids + 1] = { type = "textfield", id = "db_search", action = "db_search", live = true, text = db.query or "",
-    placeholder = t("search_placeholder") }
   local rows, visible, addable = {}, 0, 0
   local q = util.trim(db.query or ""):lower()
   for i, c in ipairs(db.cheats) do
@@ -205,38 +226,38 @@ local function db_page(v)
     if q == "" or c.name:lower():find(q, 1, true) then
       visible = visible + 1
       if visible <= (db.shown or 50) then
-        local row = { id = "d" .. i, title = c.name }
+        local kids_row = { text(c.name, "body", nil, { wrap = true }), { type = "badge", text = tag } }
         if added then
-          row.meta = tag .. " · " .. t("db_added")
-          row.tone = "ok"
+          kids_row[#kids_row + 1] = { type = "badge", text = t("db_added"), tone = "ok" }
         elseif not ok then
-          row.meta = tag .. " · " .. t("not_supported_short")
-          row.tone = "warning"
+          kids_row[#kids_row + 1] = text(t("not_supported_short"), "meta", "warning")
         else
-          row.meta = tag .. " · " .. t("db_add")
-          row.action, row.value = "db_add", i
+          kids_row[#kids_row + 1] = { type = "button", id = "btn_d" .. i, label = t("db_add"), action = "db_add", value = i,
+            variant = "secondary" }
         end
-        rows[#rows + 1] = row
+        rows[#rows + 1] = { type = "row", id = "d" .. i, gap = 8, align = "center", children = kids_row }
       end
     end
   end
+  -- Add all and the search stay above the rows
+  if addable > 0 then
+    kids[#kids + 1] = { type = "button", id = "btn_db_all", label = t("db_add_all", { n = addable }),
+      action = "db_add_all", variant = "primary" }
+  end
+  kids[#kids + 1] = { type = "textfield", id = "db_search", action = "db_search", live = true, text = db.query or "",
+    placeholder = t("search_placeholder") }
   if visible == 0 then
     kids[#kids + 1] = { type = "empty", id = "db_nomatch", title = t("no_match", { query = db.query or "" }),
       action_label = t("clear_search"), action = "db_search_clear" }
   else
-    kids[#kids + 1] = { type = "list", id = "db_list", rows = rows }
+    kids[#kids + 1] = { type = "column", id = "db_list", gap = 6, children = rows }
   end
   if visible > (db.shown or 50) then
-    kids[#kids + 1] = { type = "button", id = "btn_db_more", label = t("and_n_more", { n = visible - (db.shown or 50) }),
-      action = "db_more", variant = "quiet" }
+    kids[#kids + 1] = { type = "button", id = "btn_db_more", label = t("show_more", { n = visible - (db.shown or 50) }),
+      action = "db_more", variant = "secondary" }
   end
-  local buttons = {}
-  if addable > 0 then
-    buttons[#buttons + 1] = { type = "button", id = "btn_db_all", label = t("db_add_all", { n = addable }),
-      action = "db_add_all", variant = "primary" }
-  end
-  buttons[#buttons + 1] = { type = "button", id = "btn_close", label = t("close"), action = "dlg_close", variant = "quiet" }
-  kids[#kids + 1] = { type = "row", gap = 8, align = "center", children = buttons }
+  kids[#kids + 1] = { type = "row", gap = 8, align = "center", children = {
+    { type = "button", id = "btn_close", label = t("close"), action = "dlg_close", variant = "quiet" } } }
   return { type = "column", gap = 8, children = kids }
 end
 

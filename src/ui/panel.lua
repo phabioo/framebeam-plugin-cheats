@@ -77,6 +77,10 @@ function P.build(v)
   end
   local kids = { { type = "row", gap = 8, align = "center", children = header } }
 
+  if v.awaiting and not v.blocked then
+    kids[#kids + 1] = text(t("consent_waiting"), "meta", nil, { id = "waiting" })
+  end
+
   if v.blocked then
     kids[#kids + 1] = { type = "card", id = "blocked", eyebrow = t("blocked_title"), children = {
       text(t("blocked_text"), "meta"),
@@ -90,7 +94,7 @@ function P.build(v)
 
   if v.total == 0 then
     kids[#kids + 1] = { type = "empty", id = "empty_none", title = t("empty_title", { game = v.game_title }),
-      text = t("empty_text"), action_label = t("add_cheat"), action = "add" }
+      text = t("empty_text"), action_label = t("cheat_database"), action = "open_db" }
   else
     kids[#kids + 1] = { type = "textfield", id = "search", action = "search", live = true, text = v.query,
       placeholder = t("search_placeholder") }

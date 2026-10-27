@@ -1,5 +1,6 @@
 -- Reads cheat files: RetroArch .cht and text files (Gateway `[Name]` blocks, plain AR/GS text).
--- Pure Lua. parse(content, system) -> { kind = "cht"|"txt", cheats = { {name=, lines=, code=, format=} }, bad = n }
+-- Pure Lua. parse(content, system) -> { kind = "cht"|"txt", cheats = { {name=, lines=, code=, format=} }, bad = n,
+-- dropped = n } (`dropped`: entries with a name but no readable code, left out of `cheats`)
 local util = require("model.util")
 local formats = require("model.formats")
 
@@ -51,9 +52,10 @@ function I.parse_cht(content, system)
       end
     end
   end
-  local out, bad = {}, 0
+  local out, bad, dropped = {}, 0, 0
   for n = 0, max_index do
     local c = by_index[n]
+    if c and (c.code or c.desc) and not (c.code and util.trim(c.code) ~= "") then dropped = dropped + 1 end
     if c and (c.code or c.desc) and c.code and util.trim(c.code) ~= "" then
       local raw = {}
       for part in (c.code:gsub("[%+\n]", "\n")):gmatch("[^\n]+") do
@@ -65,7 +67,7 @@ function I.parse_cht(content, system)
       out[#out + 1] = e
     end
   end
-  return { kind = "cht", cheats = out, bad = bad }
+  return { kind = "cht", cheats = out, bad = bad, dropped = dropped }
 end
 
 --- A line of hex digits that is not a valid code (a broken code, not a name).
@@ -75,9 +77,10 @@ function I.looks_like_code(line)
 end
 
 function I.parse_txt(content, system)
-  local blocks, cur = {}, nil
+  local blocks, cur, dropped = {}, nil, 0
   local function flush()
-    if cur and #cur.lines > 0 then blocks[#blocks + 1] = cur end
+    if cur and #cur.lines > 0 then blocks[#blocks + 1] = cur
+    elseif cur then dropped = dropped + 1 end -- a name or header without a readable code
     cur = nil
   end
   for _, raw in ipairs(util.lines(content)) do
@@ -112,7 +115,7 @@ function I.parse_txt(content, system)
     if e.invalid then bad = bad + 1 end
     out[#out + 1] = e
   end
-  return { kind = "txt", cheats = out, bad = bad }
+  return { kind = "txt", cheats = out, bad = bad, dropped = dropped }
 end
 
 --- Picks the parser by content.

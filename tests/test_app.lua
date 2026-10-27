@@ -359,3 +359,54 @@ t.case("a textarea change may also arrive as a change event", function()
   m.action("change", { id = "ta_name", value = "Via event" }, "screen")
   t.eq(V.find(H.screen(m), "ta_name").value, "Via event")
 end)
+
+t.case("consent pending: toggle stays on, no toast, allowed event keeps it on (F1)", function()
+  local m = H.boot(nil, { { name = "Infinite Boost" } })
+  m.cheats.block = "consent_required"
+  m.action("toggle:e1", true, "panel")
+  t.eq(stored(m).cheats[1].enabled, true)
+  t.eq(H.row_toggle(H.panel(m), "e1").checked, true)
+  t.eq(#m.notes, 0, "no toast while the question is open")
+  t.ok(V.find(H.panel(m), "waiting"))
+  m.cheats.block = nil
+  m.fire_event("app", "cheats.allowed", {})
+  t.eq(stored(m).cheats[1].enabled, true)
+  t.ok(not V.find(H.panel(m), "waiting"))
+  t.ok(not V.find(H.panel(m), "blocked"))
+  t.eq(#m.notes, 0, "consent is not a run rule change")
+end)
+
+t.case("consent pending then denied: only the waiting cheats are reverted (F1)", function()
+  local m = H.boot(nil, { { name = "Older", enabled = true }, { name = "Infinite Boost", code = GSA2 } })
+  m.cheats.block = "consent_required"
+  m.action("toggle:e2", true, "panel")
+  m.advance(60000) -- the person takes a while
+  m.cheats.block = nil
+  m.fire_event("app", "cheats.blocked", { reason = "consent_denied" })
+  t.eq(stored(m).cheats[1].enabled, false)
+  t.eq(stored(m).cheats[2].enabled, false)
+  t.eq(m.notes[#m.notes].text, "Cheats stay off.")
+  t.ok(not V.find(H.panel(m), "waiting"))
+end)
+
+t.case("apply answering consent_denied reverts like the event (F1)", function()
+  local m = H.boot(nil, { { name = "Infinite Boost" } })
+  m.cheats.block = "consent_denied"
+  m.action("toggle:e1", true, "panel")
+  t.eq(stored(m).cheats[1].enabled, false)
+  t.eq(m.notes[#m.notes].text, "Cheats stay off.")
+end)
+
+t.case("run rule allowed again: toast (F25)", function()
+  local m = H.boot({ rule = "off" }, { { name = "Infinite Boost" } })
+  m.rule = nil
+  m.fire_event("app", "cheats.allowed", {})
+  t.eq(m.notes[#m.notes].text, "Cheats are allowed in this run.")
+end)
+
+t.case("the empty state offers the database (F6)", function()
+  local m2 = H.boot()
+  local e = V.find(H.panel(m2), "empty_none")
+  t.eq(e.action, "open_db")
+  t.eq(e.action_label, "Cheat database")
+end)

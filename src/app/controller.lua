@@ -34,6 +34,7 @@ function C.new(fb)
   self.limits = {}
   self.rejected = {}
   self.pending = {} -- id -> clock of the last turn-on
+  self.awaiting = {} -- id -> true while the app asks the person for consent
   self.blocked = nil
   self.note = nil
   self.dlg = nil
@@ -67,7 +68,7 @@ function C:view()
   local list = self.list
   return {
     t = self.t, state = "ok", game_title = self.game_title, on_count = library.on_count(list),
-    blocked = self.blocked ~= nil, supported = function(f) return self:supported(f) end,
+    blocked = self.blocked ~= nil, awaiting = next(self.awaiting) ~= nil, supported = function(f) return self:supported(f) end,
     core_name = self.core_name, rejected = self.rejected, edit = self.edit, query = self.query,
     groups = library.groups(list, self.query), total = #list, limits = self.limits, page = PAGE, note = self.note,
   }
@@ -166,16 +167,21 @@ function C:apply()
   local list = self:active_list()
   local res, msg, raised = try(fb.cheats.apply, list)
   self.rejected = {}
+  if res ~= nil then self.awaiting, self.consent_wait = {}, false end
   if raised then
     fb.log.warn("cheats.apply failed: " .. tostring(msg))
     return
   end
   if res == nil then
     msg = tostring(msg or "")
-    if msg:find("run_rule", 1, true) or msg:find("blocked", 1, true) then
-      self:set_blocked("run_rule")
-    elseif msg:find("consent", 1, true) then
+    if msg:find("consent_required", 1, true) then
+      -- the app asks the person and applies the list itself on Allow; cheats.blocked follows on Deny
+      for _, a in ipairs(list) do self.awaiting[a.id] = true end
+      self.consent_wait = true
+    elseif msg:find("consent_denied", 1, true) then
       self:consent_denied()
+    elseif msg:find("run_rule", 1, true) or msg:find("blocked", 1, true) then
+      self:set_blocked("run_rule")
     else
       self.note = self.t("note_apply_failed", { reason = util.clip(msg, 80) })
     end
@@ -206,28 +212,44 @@ function C:set_blocked(reason)
   for _, e in ipairs(self.list) do
     if e.enabled then e.enabled, changed = false, true end
   end
-  self.pending = {}
+  self.pending, self.awaiting, self.consent_wait = {}, {}, false
   if changed then self:persist() end
   if type(self.fb.cheats.clear) == "function" then try(self.fb.cheats.clear) end
   self:render()
 end
 
 function C:consent_denied()
-  local now = self.fb.clock()
+  if self.denying then return end
   local reverted = false
-  for id, at in pairs(self.pending) do
+  for id in pairs(self.awaiting) do
     local e = library.find(self.list, id)
-    if e and e.enabled and now - at <= PENDING_MS then e.enabled, reverted = false, true end
+    if e and e.enabled then e.enabled, reverted = false, true end
   end
   if not reverted then
-    for _, e in ipairs(self.list) do
-      if e.enabled then e.enabled, reverted = false, true end
+    -- no consent question was seen: undo the latest turn-ons, else everything that is on
+    local now = self.fb.clock()
+    for id, at in pairs(self.pending) do
+      local e = library.find(self.list, id)
+      if e and e.enabled and now - at <= PENDING_MS then e.enabled, reverted = false, true end
+    end
+    if not reverted then
+      for _, e in ipairs(self.list) do
+        if e.enabled then e.enabled, reverted = false, true end
+      end
     end
   end
-  self.pending = {}
+  self.awaiting, self.consent_wait, self.pending = {}, false, {}
   if reverted then self:persist() end
   self:notify({ tone = "info", text = self.t("consent_denied_toast") })
+  self.denying = true
   self:apply()
+  self.denying = false
+  self:render()
+end
+
+--- The person allowed cheats in the consent question: the app applies the list itself; the toggles stay on.
+function C:consent_allowed()
+  self.awaiting, self.consent_wait = {}, false
   self:render()
 end
 
@@ -237,8 +259,10 @@ function C:recheck()
   if state == "off" then
     self:set_blocked("run_rule")
   else
+    local was = self.blocked ~= nil
     self.blocked = nil
     self:render()
+    if was then self:notify({ tone = "info", text = self.t("run_allowed_toast") }) end
   end
 end
 
@@ -253,7 +277,7 @@ function C:set_enabled(id, on)
   if on then self.pending[id] = self.fb.clock() else self.pending[id] = nil end
   self:persist()
   self:apply()
-  if on and e.enabled and not self.blocked then
+  if on and e.enabled and not self.blocked and not self.consent_wait then
     self:notify({ tone = "info", text = self.t("is_on", { name = util.clip(e.name, 120) }),
       actions = { { label = self.t("turn_off"), action = "toast_off", value = id } } })
   end
@@ -404,7 +428,8 @@ function C:on_file(content, info)
   local name = type(info) == "table" and info.name or (type(info) == "string" and info) or nil
   local size = type(info) == "table" and info.size or #content
   local parsed = importer.parse(content, self.system)
-  local imp = { name = name and name:upper() or t("file_unnamed"), size = size, cheats = parsed.cheats, selected = {}, shown = 40 }
+  local imp = { name = name and name:upper() or t("file_unnamed"), size = size, cheats = parsed.cheats, selected = {}, shown = 40,
+    dropped = parsed.dropped or 0 }
   for i, c in ipairs(parsed.cheats) do
     if not c.invalid and self:supported(c.format) then imp.selected[i] = true end
   end
@@ -438,6 +463,11 @@ function C:load_db()
     return
   end
   local ok, res, msg = pcall(fn)
+  if ok and type(res) ~= "table" and dialog.db_problem(msg) == "loading" then
+    db.problem = "loading"
+    dlg.db = db
+    return
+  end
   if not ok then
     db.problem, db.message = "error", tostring(res)
   elseif type(res) ~= "table" then
@@ -461,6 +491,16 @@ function C:load_db()
   end
   dlg.db = db
   self:mark_db_added()
+end
+
+--- Event cheats.database: new data for fb.cheats.database(); reload when the database page is waiting or open.
+function C:on_database()
+  local dlg = self.dlg
+  if not dlg or dlg.editing then return end
+  if dlg.db or dlg.tab == 3 then
+    self:load_db()
+    self:render_screen()
+  end
 end
 
 function C:mark_db_added()
@@ -555,7 +595,7 @@ function C:on_action(action, value, slot)
     return
   elseif action == "dlg_tab" then
     dlg.tab = math.max(1, math.min(3, tonumber(value) or 1))
-    if dlg.tab == 3 and not dlg.db then self:load_db() end
+    if dlg.tab == 3 and (not dlg.db or dlg.db.problem == "loading") then self:load_db() end
     self:render_screen()
   elseif action == "fmt" then
     dlg.fmt = (value == "auto" or formats.known(value)) and value or "auto"
@@ -640,7 +680,10 @@ function C:start()
     if reason == "consent_denied" then self:consent_denied()
     else self:set_blocked("run_rule") end
   end)
-  fb.events.on("app", "cheats.allowed", function() self:recheck() end)
+  fb.events.on("app", "cheats.allowed", function()
+    if self.consent_wait or next(self.awaiting) ~= nil then self:consent_allowed() else self:recheck() end
+  end)
+  fb.events.on("app", "cheats.database", function() self:on_database() end)
 
   if self:rule_state() == "off" then
     self.blocked = "run_rule"
