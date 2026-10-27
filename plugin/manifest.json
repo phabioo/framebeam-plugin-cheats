@@ -1,0 +1,24 @@
+{
+  "id": "uzume.cheats",
+  "name": "Cheats",
+  "version": "0.1.0",
+  "api": 1,
+  "type": "script",
+  "games": [
+    { "system": "gb" },
+    { "system": "gbc" },
+    { "system": "gba" },
+    { "system": "nds" },
+    { "system": "3ds" }
+  ],
+  "permissions": ["ui", "cheats", "store"],
+  "entry": "main.lua",
+  "ui": {
+    "panel": { "title": "Cheats" },
+    "screen": { "title": "Cheats" },
+    "hotkeys": [
+      { "id": "add-cheat", "key": "Ctrl+Alt+C", "label": "Add a cheat" },
+      { "id": "cheats-off", "key": "Ctrl+Alt+X", "label": "Turn all cheats off" }
+    ]
+  }
+}

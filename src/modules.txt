@@ -1,0 +1,11 @@
+# Modules bundled into plugin/main.lua (see tools/bundle.lua)
+app.controller
+main
+model.draft
+model.formats
+model.importer
+model.library
+model.sync
+model.util
+ui.dialog
+ui.panel
