@@ -32,7 +32,7 @@ Source: live check of Uzume 0.20 package 5 (findings F1 to F25, plugin side).
 
 - F1: `fb.cheats.apply` answering `consent_required` keeps the toggle on with a "Waiting for your answer in the app." line and no toast; `cheats.allowed` (no run rule involved) ends the wait, `cheats.blocked` with `consent_denied` (or an apply answering `consent_denied`) turns off exactly the cheats that waited.
 - F2: `fb.cheats.database()` answering `error: loading` shows "Looking up ..." (not the red error); the event `cheats.database` reloads the page.
-- F6 empty state offers "Cheat database" as the second button; F9 chips "Edit" and "All off".
+- F6 empty state offers "Cheat database" as the second button; F9 chips "Edit" and "All off"; F7 the "Add cheats" sheet asks for dialog width (`width = "dialog"`, Uzume 0.20 package 6) and Cancel is a secondary button.
 - F11 database page: "Add all N" and search above the list, a real "Add" button per row, "Show N more" button. F12: state `off` has no retry; path "Server › Settings › Cheat database".
 - F22: import says how many entries could not be read and uses singular forms; F8: hint names the lines ("Fix lines 2 and 3 to add it."); F25: toast "Cheats are allowed in this run." when a run rule (or "Check again") switches cheats back on.
 - Not done: F23 (no scroll or select call in the plugin UI API to reach the Imported group; the sheet closes and the toast names the group).
