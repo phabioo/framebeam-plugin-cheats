@@ -20,13 +20,13 @@ At a glance: the plugin keeps one cheat list per game in the plugin user store, 
 
 Binding contract: Uzume plan 0.20, "Verträge".
 
-- `fb.cheats.formats()` (optional second result: core name), `apply(list)`, `clear()`, `database()`; event `fb.events.on("app", "cheats.blocked", fn)` with `reason` `run_rule` or `consent_denied`.
+- `fb.cheats.formats()` (list, core display name), `apply(list)`, `clear()`, `allowed()` (`true` or `false, reason`), `database()` (`nil` plus `"off"`, `"offline"`, `"not_found"` or `"error: <text>"`); events `fb.events.on("app", "cheats.blocked", fn)` with `reason` `run_rule` or `consent_denied`, and `cheats.allowed`.
 - `fb.store.get/put/conflicts`; key `cheats.<game code>` (fallback: hash, then title slug), value `{ v = 1, cheats = {...}, deleted = {id = true} }`.
 - `textarea` block `{ id, value, lines, mono }` (change arrives as `on_action(<id>, text)`), `fb.ui.pick_file{ title, filters, max_bytes }` with callback `(content, info)`.
-- Optional, used when present: `fb.ui.close("screen")`, `fb.run.current().rules.cheats` (needs the permission `run.state`; without it the run rule is learned from the event).
+- `fb.ui.close("screen")` closes the sheet after Add / Import (a done view is the fallback when it is missing). Blocks: `toggle` with `disabled`, `textfield` with `live = true` (search).
 
 ## Rules of the plugin
 
 - A cheat that is on is sent in the full list at every change; the plugin never relies on the core remembering anything.
-- A block by the run rule turns every cheat off in the stored list (the cheats stay listed) and shows the notice; it ends when `fb.run` shows the rule allowed or the person presses "Check again".
+- A block by the run rule turns every cheat off in the stored list (the cheats stay listed) and shows the notice; it ends on the `cheats.allowed` event or "Check again" (`fb.cheats.allowed()`).
 - Imported cheats are never turned on by the file's own enable flag.

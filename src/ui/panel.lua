@@ -37,7 +37,8 @@ local function entry_row(v, e)
       confirm = { title = t("remove_title", { name = e.name }), text = t("remove_text"),
                   confirm_label = t("remove"), danger = true } }
   elseif v.blocked or not supported then
-    children[#children + 1] = { type = "badge", text = t("off") }
+    children[#children + 1] = { type = "toggle", id = "tg_" .. e.id, action = "toggle:" .. e.id, checked = false,
+      disabled = true }
   else
     children[#children + 1] = { type = "toggle", id = "tg_" .. e.id, action = "toggle:" .. e.id, checked = e.enabled }
   end
@@ -91,7 +92,7 @@ function P.build(v)
     kids[#kids + 1] = { type = "empty", id = "empty_none", title = t("empty_title", { game = v.game_title }),
       text = t("empty_text"), action_label = t("add_cheat"), action = "add" }
   else
-    kids[#kids + 1] = { type = "textfield", id = "search", action = "search", text = v.query,
+    kids[#kids + 1] = { type = "textfield", id = "search", action = "search", live = true, text = v.query,
       placeholder = t("search_placeholder") }
     local tools = { { type = "chip", id = "chip_edit", text = t("edit_list"), action = "edit_mode", selected = v.edit } }
     if v.on_count > 0 and not v.blocked then

@@ -85,10 +85,10 @@ local SPEC = {
                end
                return true
              end, _req = { "label", "action" } },
-  toggle = { action = action, label = text200, checked = bool, _req = { "action" } },
+  toggle = { action = action, label = text200, checked = bool, disabled = bool, value = plain, _req = { "action" } },
   select = { options = list_of(option, 1, 100), selected = function(v) return v ~= nil end, action = action, _req = { "options", "action" } },
   segmented = { options = list_of(option, 2, 3), selected = function(v) return v ~= nil end, action = action, _req = { "options", "action" } },
-  textfield = { action = action, text = text2000, placeholder = text200, error = text200, _req = { "action" } },
+  textfield = { action = action, live = bool, text = text2000, placeholder = text200, error = text200, _req = { "action" } },
   -- Contract of the parallel app work (plan 0.20): { type = "textarea", id, value, lines, mono }.
   textarea = { value = str(20000), lines = int_in(1, 40), mono = bool, _req = { "id" } },
   empty = { title = text200, text = text2000, action_label = text200, action = action, tone = tone, _req = { "title" } },

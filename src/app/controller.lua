@@ -14,7 +14,6 @@ C.__index = C
 local PAGE = 25 -- rows per group before "Show more"
 local MAX_IMPORT_BYTES = 256 * 1024
 local PENDING_MS = 5000
-local POLL_TICKS = 120
 
 local function try(fn, ...)
   local r = table.pack(pcall(fn, ...))
@@ -52,14 +51,13 @@ function C:available()
     and type(fb.store.get) == "function"
 end
 
--- Run rule: "off", "allowed" or nil when it cannot be read (no run.state permission, no run).
+-- Run rule via fb.cheats.allowed(): "off" (not allowed), "allowed", or nil when it cannot be asked.
 function C:rule_state()
-  local fb = self.fb
-  if type(fb.run) ~= "table" or type(fb.run.current) ~= "function" then return nil end
-  local ok, cur = pcall(fb.run.current)
-  if not ok then return nil end
-  if type(cur) == "table" and type(cur.rules) == "table" and cur.rules.cheats == "off" then return "off" end
-  return "allowed"
+  local fn = type(self.fb.cheats) == "table" and self.fb.cheats.allowed or nil
+  if type(fn) ~= "function" then return nil end
+  local ok, allowed = pcall(fn)
+  if not ok or allowed == nil then return nil end
+  return allowed and "allowed" or "off"
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -233,11 +231,12 @@ function C:consent_denied()
   self:render()
 end
 
-function C:poll()
+--- Reads the run rule again (event cheats.allowed, "Check again").
+function C:recheck()
   local state = self:rule_state()
-  if state == "off" and not self.blocked then
+  if state == "off" then
     self:set_blocked("run_rule")
-  elseif state == "allowed" and self.blocked == "run_rule" then
+  else
     self.blocked = nil
     self:render()
   end
@@ -334,6 +333,19 @@ function C:close_dialog()
   if type(fb.ui.close) == "function" then try(fb.ui.close, "screen") end
 end
 
+--- After adding: close the sheet when the app can, else show the done view.
+function C:finish(text)
+  local dlg = self.dlg
+  if type(self.fb.ui.close) == "function" then
+    self:close_dialog()
+    self:notify({ tone = "info", text = text })
+    self:render_panel()
+  else
+    dlg.done = text
+    self:render()
+  end
+end
+
 function C:confirm_add()
   local dlg = self.dlg
   if not dlg then return end
@@ -359,9 +371,8 @@ function C:confirm_add()
     self.fb.clock())
   local added = self:add_entries({ entry })
   if #added == 0 then self:render(); return end
-  dlg.done = self.t("added_one", { name = util.clip(added[1].name, 80) })
   dlg.name, dlg.code, dlg.fmt, dlg.after_reset = "", "", "auto", false
-  self:render()
+  self:finish(self.t("added_one", { name = util.clip(added[1].name, 80) }))
 end
 
 function C:pick_file()
@@ -412,9 +423,8 @@ function C:import_go()
   end
   local added = self:add_entries(entries)
   if #added == 0 then self:render(); return end
-  dlg.done = self.t("imported_n", { n = #added })
   dlg.imp = nil
-  self:render()
+  self:finish(self.t("imported_n", { n = #added }))
 end
 
 function C:load_db()
@@ -431,7 +441,7 @@ function C:load_db()
   if not ok then
     db.problem, db.message = "error", tostring(res)
   elseif type(res) ~= "table" then
-    db.problem, db.message = dialog.db_problem(msg), tostring(msg or "")
+    db.problem, db.message = dialog.db_problem(msg)
   else
     db.source, db.updated_at = res.source, res.updated_at
     db.cheats = {}
@@ -540,9 +550,7 @@ function C:on_action(action, value, slot)
     self.edit = not self.edit
     self:render_panel()
   elseif action == "all_off" then self:all_off()
-  elseif action == "recheck" then
-    self.blocked = nil
-    self:render()
+  elseif action == "recheck" then self:recheck()
   elseif not dlg then
     return
   elseif action == "dlg_tab" then
@@ -632,11 +640,7 @@ function C:start()
     if reason == "consent_denied" then self:consent_denied()
     else self:set_blocked("run_rule") end
   end)
-  local ticks = 0
-  fb.on_tick(function()
-    ticks = ticks + 1
-    if ticks % POLL_TICKS == 0 then self:poll() end
-  end)
+  fb.events.on("app", "cheats.allowed", function() self:recheck() end)
 
   if self:rule_state() == "off" then
     self.blocked = "run_rule"

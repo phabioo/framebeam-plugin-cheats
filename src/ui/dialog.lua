@@ -133,7 +133,7 @@ local function import_page(v)
     if ok then
       children[#children + 1] = { type = "toggle", id = "it" .. i, action = "imp:" .. i, checked = imp.selected[i] == true }
     else
-      children[#children + 1] = { type = "badge", text = t("off") }
+      children[#children + 1] = { type = "toggle", id = "it" .. i, action = "imp:" .. i, checked = false, disabled = true }
     end
     local name = text(c.name, "body", nil, { wrap = true })
     if why then
@@ -166,13 +166,10 @@ end
 
 --- Why the database gave nothing: classify the message of fb.cheats.database().
 function D.db_problem(msg)
-  local m = tostring(msg or ""):lower()
-  if m:find("offline") or m:find("unreach") or m:find("network") or m:find("timeout") then return "offline" end
-  if m:find("%f[%w]off%f[%W]") or m:find("disabled") then return "off" end
-  if m:find("not_found") or m:find("not found") or m:find("no match") or m:find("no_match") or m:find("none") then
-    return "none"
-  end
-  return "error"
+  msg = tostring(msg or "")
+  if msg == "off" or msg == "offline" then return msg, nil end
+  if msg == "not_found" then return "none", nil end
+  return "error", (msg:gsub("^error:%s*", ""))
 end
 
 local function db_page(v)
@@ -196,7 +193,7 @@ local function db_page(v)
     kids[#kids + 1] = text(t("db_source", { source = util.clip(tostring(db.source), 60),
       date = util.clip(tostring(db.updated_at or "?"), 24) }), "meta", nil, { id = "db_source" })
   end
-  kids[#kids + 1] = { type = "textfield", id = "db_search", action = "db_search", text = db.query or "",
+  kids[#kids + 1] = { type = "textfield", id = "db_search", action = "db_search", live = true, text = db.query or "",
     placeholder = t("search_placeholder") }
   local rows, visible, addable = {}, 0, 0
   local q = util.trim(db.query or ""):lower()

@@ -230,6 +230,11 @@ function M.new(opts)
         if d[1] == nil and d[2] ~= nil then return nil, d[2] end
         return deep_copy(d)
       end,
+      -- true | false, reason; driven by mock.rule ("off" blocks)
+      allowed = function()
+        if mock.rule == "off" then return false, "run_rule" end
+        return true
+      end,
     }
   end
 
@@ -271,10 +276,7 @@ function M.new(opts)
 
   -- fb.run (only when opts.run is given; the plugin has no run.state permission, so this models
   -- an app that lets it read the run) -----------------------------------------------------------------
-  if opts.run ~= nil then
-    mock.run_current = deep_copy(opts.run)
-    fb.run = { current = function() return deep_copy(mock.run_current) end }
-  end
+  mock.rule = opts.rule
 
   return mock
 end

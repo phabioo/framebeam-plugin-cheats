@@ -26,4 +26,4 @@ Built in v0.1.0:
 - Lists per game in `fb.store` key `cheats.<game code>` with revisions; on conflict both versions are merged by cheat id (deleted cheats stay deleted, a cheat changed on both sides is kept twice).
 - Every toggle, edit and removal sends the full list of enabled supported cheats with `fb.cheats.apply`; hotkeys Ctrl+Alt+C (add) and Ctrl+Alt+X (all off).
 
-Open for the live check (see the Uzume plan 0.20): exact `textarea` action naming, `fb.ui.pick_file` callback shape, `fb.cheats.database()` and a way to close the `screen` sheet (`fb.ui.close`) are assumptions marked in the code; the consent dialog (11d), run rule screens (11e to 11g) and database setting (11h) belong to the app.
+Open for the live check (see the Uzume plan 0.20): exact `textarea` action naming, `fb.ui.pick_file` callback shape, `fb.cheats.database()` result shape is an assumption marked in the code; the consent dialog (11d), run rule screens (11e to 11g) and database setting (11h) belong to the app.
