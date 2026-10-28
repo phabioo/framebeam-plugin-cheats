@@ -2,6 +2,10 @@
 
 Status: v0.1.3 renames the API namespace to `uz` (falls back to `fb` on older apps); v0.1.2 shows an own empty state for `unavailable`; v0.1.1 fixes the plugin-side findings of the live check of Uzume 0.20 package 5 (below); v0.1.0 was implemented against the 0.20 API contract and tested with a fake `uz` only. Part of Uzume milestone 0.20 "Emulation", section "Cheats" ([Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md), design [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md)).
 
+## Open work
+
+Open work is tracked as issues: [issues](https://github.com/phabioo/uzume-plugin-cheats/issues) and the [milestones](https://github.com/phabioo/uzume-plugin-cheats/milestones).
+
 ## Before this plugin
 
 These come first in Uzume and are not built here:
@@ -43,6 +47,6 @@ Source: live check of Uzume 0.20 package 5 (findings F1 to F25, plugin side).
 - F6 empty state offers "Cheat database" as the second button; F9 chips "Edit" and "All off"; F7 the "Add cheats" sheet asks for dialog width (`width = "dialog"`, Uzume 0.20 package 6) and Cancel is a secondary button.
 - F11 database page: "Add all N" and search above the list, a real "Add" button per row, "Show N more" button. F12: state `off` has no retry; path "Server › Settings › Cheat database".
 - F22: import says how many entries could not be read and uses singular forms; F8: hint names the lines ("Fix lines 2 and 3 to add it."); F25: toast "Cheats are allowed in this run." when a run rule (or "Check again") switches cheats back on.
-- Not done: F23 (no scroll or select call in the plugin UI API to reach the Imported group; the sheet closes and the toast names the group).
+- F23 (no scroll or select call in the plugin UI API to reach the Imported group; the sheet closes and the toast names the group) is an open issue.
 
-Open for the live check (see the Uzume plan 0.20): exact `textarea` action naming, `uz.ui.pick_file` callback shape, `uz.cheats.database()` result shape is an assumption marked in the code; the consent dialog (11d), run rule screens (11e to 11g) and database setting (11h) belong to the app.
+The consent dialog (11d), run rule screens (11e to 11g) and database setting (11h) belong to the app. The live check of `textarea` action naming, the `uz.ui.pick_file` callback and the `uz.cheats.database()` result shape is an open issue.
