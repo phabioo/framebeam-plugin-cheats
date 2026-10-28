@@ -1,5 +1,5 @@
--- Test helpers: boot the controller against the fake fb, inspect UI trees.
-local mock = require("fb_mock")
+-- Test helpers: boot the controller against the fake uz, inspect UI trees.
+local mock = require("uz_mock")
 local V = require("ui_validator")
 local controller = require("app.controller")
 
@@ -20,7 +20,7 @@ function H.boot(opts, entries)
     opts.store["cheats.axve"] = { v = 1, cheats = list, deleted = {} }
   end
   local m = mock.new(opts)
-  local app = controller.new(m.fb)
+  local app = controller.new(m.uz)
   app:start()
   m.app = app
   return m, app

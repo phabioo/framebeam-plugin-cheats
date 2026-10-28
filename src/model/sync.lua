@@ -1,4 +1,4 @@
--- Persistence in the plugin user store (`fb.store`): key per game, revisions, merge on conflict.
+-- Persistence in the plugin user store (`uz.store`): key per game, revisions, merge on conflict.
 -- Stored value: { v = 1, cheats = { entry... }, deleted = { [id] = true } }
 local util = require("model.util")
 local formats = require("model.formats")

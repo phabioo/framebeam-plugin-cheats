@@ -21,11 +21,11 @@ local function try(fn, ...)
   return table.unpack(r, 2, r.n)
 end
 
-function C.new(fb)
+function C.new(uz)
   local self = setmetatable({}, C)
-  self.fb = fb
-  self.t = fb.i18n.t
-  local game = fb.game or {}
+  self.uz = uz
+  self.t = uz.i18n.t
+  local game = uz.game or {}
   self.game = game
   self.system = tostring(game.system or ""):lower()
   self.game_title = util.clip(game.title or game.code or self.t("this_game"), 60)
@@ -47,14 +47,14 @@ function C:supported(format)
 end
 
 function C:available()
-  local fb = self.fb
-  return type(fb.cheats) == "table" and type(fb.cheats.apply) == "function" and type(fb.store) == "table"
-    and type(fb.store.get) == "function"
+  local uz = self.uz
+  return type(uz.cheats) == "table" and type(uz.cheats.apply) == "function" and type(uz.store) == "table"
+    and type(uz.store.get) == "function"
 end
 
--- Run rule via fb.cheats.allowed(): "off" (not allowed), "allowed", or nil when it cannot be asked.
+-- Run rule via uz.cheats.allowed(): "off" (not allowed), "allowed", or nil when it cannot be asked.
 function C:rule_state()
-  local fn = type(self.fb.cheats) == "table" and self.fb.cheats.allowed or nil
+  local fn = type(self.uz.cheats) == "table" and self.uz.cheats.allowed or nil
   if type(fn) ~= "function" then return nil end
   local ok, allowed = pcall(fn)
   if not ok or allowed == nil then return nil end
@@ -75,14 +75,14 @@ function C:view()
 end
 
 function C:render_panel()
-  local fb = self.fb
+  local uz = self.uz
   local v
   if self.state ~= "ok" then
     v = { t = self.t, state = self.state }
   else
     v = self:view()
   end
-  fb.ui.set("panel", panel.build(v))
+  uz.ui.set("panel", panel.build(v))
 end
 
 function C:dialog_view()
@@ -96,23 +96,23 @@ function C:dialog_view()
 end
 
 function C:render_screen()
-  local fb = self.fb
+  local uz = self.uz
   local t = self.t
   if self.state ~= "ok" then
-    fb.ui.set("screen", { type = "column", gap = 12, children = {
+    uz.ui.set("screen", { type = "column", gap = 12, children = {
       { type = "empty", title = t(self.state == "unavailable" and "unavailable_title" or "no_game_title"),
         text = t(self.state == "unavailable" and "unavailable_text" or "no_game_text") } } })
     return
   end
   if not self.dlg then
-    fb.ui.set("screen", { type = "column", gap = 12, children = {
+    uz.ui.set("screen", { type = "column", gap = 12, children = {
       { type = "text", text = t("landing_text"), style = "meta" },
       { type = "row", gap = 8, align = "center", children = {
         { type = "button", label = t("add_cheat"), action = "add", variant = "primary" },
         { type = "button", label = t("cheat_database"), action = "open_db", variant = "secondary" } } } } })
     return
   end
-  fb.ui.set("screen", dialog.build(self:dialog_view()))
+  uz.ui.set("screen", dialog.build(self:dialog_view()))
 end
 
 function C:render()
@@ -124,10 +124,10 @@ end
 -- Store
 
 function C:persist()
-  local fb = self.fb
+  local uz = self.uz
   if not self.key then return end
   local data = { cheats = self.list, deleted = self.deleted }
-  local merged, rev, status = sync.save(fb.store, self.key, data, self.rev)
+  local merged, rev, status = sync.save(uz.store, self.key, data, self.rev)
   self.rev = rev
   if status == "merged" then
     self.list, self.deleted = merged.cheats, merged.deleted
@@ -156,20 +156,20 @@ function C:active_list()
 end
 
 function C:notify(n)
-  local fb = self.fb
-  if type(fb.ui.notify) == "function" then try(fb.ui.notify, n) end
+  local uz = self.uz
+  if type(uz.ui.notify) == "function" then try(uz.ui.notify, n) end
 end
 
 --- Sends the full list of enabled supported entries to the core.
 function C:apply()
   if self.blocked then return end
-  local fb = self.fb
+  local uz = self.uz
   local list = self:active_list()
-  local res, msg, raised = try(fb.cheats.apply, list)
+  local res, msg, raised = try(uz.cheats.apply, list)
   self.rejected = {}
   if res ~= nil then self.awaiting, self.consent_wait = {}, false end
   if raised then
-    fb.log.warn("cheats.apply failed: " .. tostring(msg))
+    uz.log.warn("cheats.apply failed: " .. tostring(msg))
     return
   end
   if res == nil then
@@ -201,7 +201,7 @@ function C:apply()
   if changed then
     self:persist()
     local again = self:active_list()
-    try(fb.cheats.apply, again)
+    try(uz.cheats.apply, again)
   end
 end
 
@@ -214,7 +214,7 @@ function C:set_blocked(reason)
   end
   self.pending, self.awaiting, self.consent_wait = {}, {}, false
   if changed then self:persist() end
-  if type(self.fb.cheats.clear) == "function" then try(self.fb.cheats.clear) end
+  if type(self.uz.cheats.clear) == "function" then try(self.uz.cheats.clear) end
   self:render()
 end
 
@@ -227,7 +227,7 @@ function C:consent_denied()
   end
   if not reverted then
     -- no consent question was seen: undo the latest turn-ons, else everything that is on
-    local now = self.fb.clock()
+    local now = self.uz.clock()
     for id, at in pairs(self.pending) do
       local e = library.find(self.list, id)
       if e and e.enabled and now - at <= PENDING_MS then e.enabled, reverted = false, true end
@@ -274,7 +274,7 @@ function C:set_enabled(id, on)
   if not e or self.blocked then return end
   if on and not self:supported(e.format) then return end
   e.enabled = on
-  if on then self.pending[id] = self.fb.clock() else self.pending[id] = nil end
+  if on then self.pending[id] = self.uz.clock() else self.pending[id] = nil end
   self:persist()
   self:apply()
   if on and e.enabled and not self.blocked and not self.consent_wait then
@@ -327,9 +327,9 @@ end
 -- Dialog
 
 function C:open_screen()
-  local fb = self.fb
+  local uz = self.uz
   self:render_screen()
-  if type(fb.ui.open) == "function" then try(fb.ui.open, "screen") end
+  if type(uz.ui.open) == "function" then try(uz.ui.open, "screen") end
 end
 
 function C:open_add()
@@ -351,16 +351,16 @@ function C:open_db()
 end
 
 function C:close_dialog()
-  local fb = self.fb
+  local uz = self.uz
   self.dlg = nil
   self:render_screen()
-  if type(fb.ui.close) == "function" then try(fb.ui.close, "screen") end
+  if type(uz.ui.close) == "function" then try(uz.ui.close, "screen") end
 end
 
 --- After adding: close the sheet when the app can, else show the done view.
 function C:finish(text)
   local dlg = self.dlg
-  if type(self.fb.ui.close) == "function" then
+  if type(self.uz.ui.close) == "function" then
     self:close_dialog()
     self:notify({ tone = "info", text = text })
     self:render_panel()
@@ -387,12 +387,12 @@ function C:confirm_add()
     end
     self.dlg = nil
     self:render_screen()
-    if type(self.fb.ui.close) == "function" then try(self.fb.ui.close, "screen") end
+    if type(self.uz.ui.close) == "function" then try(self.uz.ui.close, "screen") end
     self:render_panel()
     return
   end
   local entry = library.make({ name = name, format = a.fmt, code = code, group = "mine", after_reset = dlg.after_reset },
-    self.fb.clock())
+    self.uz.clock())
   local added = self:add_entries({ entry })
   if #added == 0 then self:render(); return end
   dlg.name, dlg.code, dlg.fmt, dlg.after_reset = "", "", "auto", false
@@ -400,14 +400,14 @@ function C:confirm_add()
 end
 
 function C:pick_file()
-  local fb, t, dlg = self.fb, self.t, self.dlg
+  local uz, t, dlg = self.uz, self.t, self.dlg
   if not dlg then return end
-  if type(fb.ui.pick_file) ~= "function" then
+  if type(uz.ui.pick_file) ~= "function" then
     dlg.imp = { error = t("pick_unavailable"), cheats = {}, selected = {} }
     self:render_screen()
     return
   end
-  local ok, err = pcall(fb.ui.pick_file, { title = t("pick_title"), filters = { "*.cht", "*.txt" },
+  local ok, err = pcall(uz.ui.pick_file, { title = t("pick_title"), filters = { "*.cht", "*.txt" },
     max_bytes = MAX_IMPORT_BYTES }, function(content, info) self:on_file(content, info) end)
   if not ok then
     dlg.imp = { error = util.clip(tostring(err), 200), cheats = {}, selected = {} }
@@ -443,7 +443,7 @@ function C:import_go()
   local entries = {}
   for i, c in ipairs(dlg.imp.cheats) do
     if dlg.imp.selected[i] and not c.invalid and self:supported(c.format) then
-      entries[#entries + 1] = library.make({ name = c.name, format = c.format, code = c.code, group = "imported" }, self.fb.clock())
+      entries[#entries + 1] = library.make({ name = c.name, format = c.format, code = c.code, group = "imported" }, self.uz.clock())
     end
   end
   local added = self:add_entries(entries)
@@ -453,10 +453,10 @@ function C:import_go()
 end
 
 function C:load_db()
-  local fb, t, dlg = self.fb, self.t, self.dlg
+  local uz, t, dlg = self.uz, self.t, self.dlg
   if not dlg then return end
   local db = { added = {}, shown = 50, query = "" }
-  local fn = type(fb.cheats) == "table" and fb.cheats.database or nil
+  local fn = type(uz.cheats) == "table" and uz.cheats.database or nil
   if type(fn) ~= "function" then
     db.problem, db.message = "error", t("db_unavailable")
     dlg.db = db
@@ -493,7 +493,7 @@ function C:load_db()
   self:mark_db_added()
 end
 
---- Event cheats.database: new data for fb.cheats.database(); reload when the database page is waiting or open.
+--- Event cheats.database: new data for uz.cheats.database(); reload when the database page is waiting or open.
 function C:on_database()
   local dlg = self.dlg
   if not dlg or dlg.editing then return end
@@ -523,7 +523,7 @@ function C:db_add(indexes)
   for _, i in ipairs(indexes) do
     local c = db.cheats[i]
     if c and c.format and not db.added[i] and self:supported(c.format) then
-      entries[#entries + 1] = library.make({ name = c.name, format = c.format, code = c.code, group = "db" }, self.fb.clock())
+      entries[#entries + 1] = library.make({ name = c.name, format = c.format, code = c.code, group = "db" }, self.uz.clock())
       idx[#idx + 1] = i
     end
   end
@@ -543,7 +543,7 @@ end
 local TEXTAREAS = { ta_name = "name", ta_code = "code" }
 
 function C:on_action(action, value, slot)
-  local fb, dlg = self.fb, self.dlg
+  local uz, dlg = self.uz, self.dlg
   if slot == "hotkey" then
     if action == "add-cheat" then self:open_add()
     elseif action == "cheats-off" then self:all_off() end
@@ -651,7 +651,7 @@ end
 ---------------------------------------------------------------------------------------------------
 
 function C:start()
-  local fb = self.fb
+  local uz = self.uz
   if not self:available() then
     self.state = "unavailable"
     self:render()
@@ -664,26 +664,26 @@ function C:start()
     return
   end
   self.state = "ok"
-  local data, rev = sync.read(fb.store, self.key)
+  local data, rev = sync.read(uz.store, self.key)
   self.list, self.deleted, self.rev = data.cheats, data.deleted, rev
 
-  local list, core = try(fb.cheats.formats)
+  local list, core = try(uz.cheats.formats)
   if type(list) == "table" then
     self.fmt_set = {}
     for _, f in ipairs(list) do self.fmt_set[f] = true end
   end
   self.core_name = type(core) == "string" and core ~= "" and core or self.t("core_default")
 
-  fb.ui.on_action(function(action, value, slot) self:on_action(action, value, slot) end)
-  fb.events.on("app", "cheats.blocked", function(v)
+  uz.ui.on_action(function(action, value, slot) self:on_action(action, value, slot) end)
+  uz.events.on("app", "cheats.blocked", function(v)
     local reason = type(v) == "table" and v.reason or nil
     if reason == "consent_denied" then self:consent_denied()
     else self:set_blocked("run_rule") end
   end)
-  fb.events.on("app", "cheats.allowed", function()
+  uz.events.on("app", "cheats.allowed", function()
     if self.consent_wait or next(self.awaiting) ~= nil then self:consent_allowed() else self:recheck() end
   end)
-  fb.events.on("app", "cheats.database", function() self:on_database() end)
+  uz.events.on("app", "cheats.database", function() self:on_database() end)
 
   if self:rule_state() == "off" then
     self.blocked = "run_rule"

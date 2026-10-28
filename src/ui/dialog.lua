@@ -185,7 +185,7 @@ local function import_page(v)
   return { type = "column", gap = 8, children = kids }
 end
 
---- Why the database gave nothing: classify the message of fb.cheats.database().
+--- Why the database gave nothing: classify the message of uz.cheats.database().
 function D.db_problem(msg)
   msg = tostring(msg or "")
   if msg == "off" or msg == "offline" then return msg, nil end

@@ -1,6 +1,6 @@
--- Fake `fb` for tests: ui (validated against the block catalog), cheats, store, events, run, ticks.
--- The API shapes of fb.cheats, fb.store, fb.ui.pick_file and the textarea block follow the binding
--- contract in the Uzume plan 0.20 ("Verträge"); fb.cheats.database() is the contract this plugin adds.
+-- Fake `uz` for tests: ui (validated against the block catalog), cheats, store, events, run, ticks.
+-- The API shapes of uz.cheats, uz.store, uz.ui.pick_file and the textarea block follow the binding
+-- contract in the Uzume plan 0.20 ("Verträge"); uz.cheats.database() is the contract this plugin adds.
 local M = {}
 local ui_validator = require("ui_validator")
 
@@ -80,14 +80,14 @@ end
 function M.new(opts)
   opts = opts or {}
   local mock = { logs = {}, handlers = {}, notes = {}, opened = {}, closed = 0 }
-  local fb = { api = 1, plugin = { id = "uzume.cheats", version = "0.1.2" } }
-  mock.fb = fb
-  fb.game = opts.game or { system = "gba", code = "AXVE", title = "Lumen Drift" }
-  if opts.language then fb.game.language = opts.language end
+  local uz = { api = 1, plugin = { id = "uzume.cheats", version = "0.1.3" } }
+  mock.uz = uz
+  uz.game = opts.game or { system = "gba", code = "AXVE", title = "Lumen Drift" }
+  if opts.language then uz.game.language = opts.language end
 
-  fb.log = {}
+  uz.log = {}
   for _, level in ipairs({ "debug", "info", "warn", "error" }) do
-    fb.log[level] = function(...)
+    uz.log[level] = function(...)
       local parts = table.pack(...)
       for i = 1, parts.n do parts[i] = tostring(parts[i]) end
       mock.logs[#mock.logs + 1] = { level = level, text = table.concat(parts, "\t", 1, parts.n) }
@@ -95,10 +95,10 @@ function M.new(opts)
   end
 
   local now = 1000
-  fb.clock = function() return now end
+  uz.clock = function() return now end
   function mock.advance(ms) now = now + ms end
 
-  fb.events = {
+  uz.events = {
     emit = function(name, value) check_value(value, 1) end,
     on = function(plugin_id, name, fn) mock.handlers[#mock.handlers + 1] = { plugin_id, name, fn } end,
   }
@@ -109,7 +109,7 @@ function M.new(opts)
   end
 
   local tick_fn
-  fb.on_tick = function(fn) tick_fn = fn end
+  uz.on_tick = function(fn) tick_fn = fn end
   mock.frame = 0
   function mock.tick(n)
     for _ = 1, n or 1 do
@@ -129,7 +129,7 @@ function M.new(opts)
     end
   end
   mock.strings = strings
-  fb.i18n = {
+  uz.i18n = {
     t = function(key, vars)
       local s = strings[key] or key
       return (s:gsub("{([%w_]+)}", function(k)
@@ -138,11 +138,11 @@ function M.new(opts)
     end,
   }
 
-  -- fb.ui -------------------------------------------------------------------------------------------
+  -- uz.ui -------------------------------------------------------------------------------------------
   local ui = { trees = {}, sets = {}, handler = nil }
   mock.ui = ui
   local SLOTS = { panel = true, screen = true }
-  fb.ui = {
+  uz.ui = {
     set = function(slot, tree)
       if not SLOTS[slot] then error("slot " .. tostring(slot) .. " not declared in manifest", 2) end
       local ok, err = ui_validator.validate(tree)
@@ -176,14 +176,14 @@ function M.new(opts)
   }
   if not opts.no_close then
     -- not in the documented API today; the plugin uses it only when present
-    fb.ui.close = function(slot) mock.closed = mock.closed + 1; return true end
+    uz.ui.close = function(slot) mock.closed = mock.closed + 1; return true end
   end
   function mock.action(action, value, slot) return ui.handler(action, deep_copy(value), slot) end
 
-  -- fb.ui.pick_file{ title, filters, max_bytes } -> content via callback(content, info)
+  -- uz.ui.pick_file{ title, filters, max_bytes } -> content via callback(content, info)
   mock.pick = { requests = {} }
   if not opts.no_pick_file then
-    fb.ui.pick_file = function(o, cb)
+    uz.ui.pick_file = function(o, cb)
       if type(o) ~= "table" or type(cb) ~= "function" then error("pick_file: options and callback expected", 2) end
       mock.pick.requests[#mock.pick.requests + 1] = deep_copy(o)
       mock.pick.cb = cb
@@ -193,10 +193,10 @@ function M.new(opts)
   --- mock.pick_result(content, info): the user picked a file (content nil = cancelled)
   function mock.pick_result(content, info) mock.pick.cb(content, info) end
 
-  -- fb.cheats ---------------------------------------------------------------------------------------
+  -- uz.cheats ---------------------------------------------------------------------------------------
   mock.cheats = { applied = {}, apply_calls = {}, clears = 0, reject = {}, block = nil }
   if not opts.no_cheats then
-    fb.cheats = {
+    uz.cheats = {
       formats = function()
         if opts.formats == nil then return { "gsa", "cb", "ar_gba", "raw" }, opts.core_name end
         return deep_copy(opts.formats), opts.core_name
@@ -238,12 +238,12 @@ function M.new(opts)
     }
   end
 
-  -- fb.store ----------------------------------------------------------------------------------------
+  -- uz.store ----------------------------------------------------------------------------------------
   local store = { data = {}, conflicts = {} }
   mock.store = store
   for k, v in pairs(opts.store or {}) do store.data[k] = { value = deep_copy(v), rev = 1 } end
   if not opts.no_store then
-    fb.store = {
+    uz.store = {
       get = function(key)
         local d = store.data[key]
         if not d then return nil, 0 end
@@ -274,7 +274,7 @@ function M.new(opts)
     store.data[key] = { value = deep_copy(value), rev = (d and d.rev or 0) + 1 }
   end
 
-  -- fb.run (only when opts.run is given; the plugin has no run.state permission, so this models
+  -- uz.run (only when opts.run is given; the plugin has no run.state permission, so this models
   -- an app that lets it read the run) -----------------------------------------------------------------
   mock.rule = opts.rule
 

@@ -44,7 +44,7 @@ t.case("add a cheat: dialog opens, form validates, cheat lands in Mine", functio
   t.eq(#m.cheats.apply_calls, 0, "adding does not turn it on")
 end)
 
-t.case("add a cheat without fb.ui.close: done view as fallback", function()
+t.case("add a cheat without uz.ui.close: done view as fallback", function()
   local m = H.boot({ no_close = true })
   m.action("add", nil, "panel")
   H.type_code(m, "Infinite Boost", GSA)
@@ -177,7 +177,7 @@ t.case("run rule: event cheats.blocked dims the list and turns cheats off", func
   for _, tg in ipairs(H.toggles(H.panel(m))) do t.eq(tg.disabled, nil) end
 end)
 
-t.case("run rule: fb.cheats.allowed() at start, and the app events", function()
+t.case("run rule: uz.cheats.allowed() at start, and the app events", function()
   local m = H.boot({ rule = "off" }, { { name = "Infinite Boost", enabled = true } })
   t.ok(V.find(H.panel(m), "blocked"))
   t.eq(#m.cheats.apply_calls, 0)

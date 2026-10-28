@@ -2,7 +2,7 @@
 
 Cheat lists per game for Uzume, applied through the cores' own cheat engines.
 
-Status: **v0.1.2**, built against the Uzume 0.20 plugin API contract (cheats tab, add/import dialog, cheat database, per-game lists in the plugin user store); v0.1.1 fixes the findings of the package 5 live check; v0.1.2 shows a proper empty state when the server database has no lists yet; needs Uzume 0.20 to run.
+Status: **v0.1.3**, built against the Uzume 0.20 plugin API contract (cheats tab, add/import dialog, cheat database, per-game lists in the plugin user store); v0.1.1 fixes the findings of the package 5 live check; v0.1.2 shows a proper empty state when the server database has no lists yet; v0.1.3 uses the API name `uz` (falls back to `fb` on older apps); needs Uzume 0.20 to run.
 
 Requires Uzume 0.20 (core cheats and the `cheats` plugin permission; [Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md)). Part of [Uzume](https://github.com/phabioo/uzume); design: [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md), plugin API: `docs/guides/plugin-api.md` there. Plan: [docs/roadmap.md](docs/roadmap.md).
 

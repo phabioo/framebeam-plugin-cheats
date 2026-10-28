@@ -7,7 +7,7 @@ uzume-plugin-cheats is a generic cheats plugin for all games. It manages cheat c
 ## Relation to Uzume
 
 - Plugin for [Uzume](https://github.com/phabioo/uzume) (self-hosted retro gaming platform). Interface: `docs/architecture/12-plugins.md` and `docs/guides/plugin-api.md` in the Uzume repository.
-- Plugin API v1 ships with Uzume since 0.11. What this plugin needs (core cheats, run rule `rules.cheats`, the `cheats` permission with `fb.cheats.*`, the plugin user store `fb.store`, `textarea`, `fb.ui.pick_file`, the cheat database) is built in Uzume 0.20 in parallel; the code follows the binding contract in the Uzume 0.20 plan and is tested with a fake `fb` only. Open API items are marked open, never invented.
+- Plugin API v1 ships with Uzume since 0.11. What this plugin needs (core cheats, run rule `rules.cheats`, the `cheats` permission with `uz.cheats.*`, the plugin user store `uz.store`, `textarea`, `uz.ui.pick_file`, the cheat database) is built in Uzume 0.20 in parallel; the code follows the binding contract in the Uzume 0.20 plan and is tested with a fake `uz` only. Open API items are marked open, never invented.
 - Runtime: Lua 5.4 in the Uzume sandbox; UI only as declarative building blocks (no QML).
 
 ## Working rules
@@ -33,8 +33,8 @@ uzume-plugin-cheats is a generic cheats plugin for all games. It manages cheat c
 
 ## Status and commands
 
-- Status: v0.1.2 (`fb.cheats.database()` answering `unavailable` shows its own "Cheat database not ready" empty state with Retry); v0.1.1 (live-check fixes: consent pending/allowed/denied handling, database loading state and `cheats.database` event, empty state, shorter chips, dialog-width "Add cheats" sheet (needs Uzume with 0.20 package 6), database page with buttons, import and hint wording, toast on a run rule change); v0.1.0 (cheats tab, add/import dialog, cheat database, per-game lists in `fb.store`, `fb.cheats.apply`; de/en). Layout: `docs/architecture.md`.
-- Sources are modules in `src/`; `lua5.4 tools/bundle.lua` generates the committed `plugin/main.lua` (list new modules in `src/modules.txt`; `--check` fails when stale). Tests: `lua5.4 tests/run.lua` (fake `fb` in `tests/support/fb_mock.lua`, `fb.ui` validator). Package: `python3 -I tools/package.py [--out DIR]`, verify with `--verify FILE`; a tag `vX.Y.Z` builds the `.uzplugin` release asset (`.github/workflows/release.yml`). Changelog tool tests: `python3 -I -m unittest discover -s tests/tools`.
+- Status: v0.1.3 (API namespace `uz`, falls back to `fb` on older apps); v0.1.2 (`uz.cheats.database()` answering `unavailable` shows its own "Cheat database not ready" empty state with Retry); v0.1.1 (live-check fixes: consent pending/allowed/denied handling, database loading state and `cheats.database` event, empty state, shorter chips, dialog-width "Add cheats" sheet (needs Uzume with 0.20 package 6), database page with buttons, import and hint wording, toast on a run rule change); v0.1.0 (cheats tab, add/import dialog, cheat database, per-game lists in `uz.store`, `uz.cheats.apply`; de/en). Layout: `docs/architecture.md`.
+- Sources are modules in `src/`; `lua5.4 tools/bundle.lua` generates the committed `plugin/main.lua` (list new modules in `src/modules.txt`; `--check` fails when stale). Tests: `lua5.4 tests/run.lua` (fake `uz` in `tests/support/uz_mock.lua`, `uz.ui` validator). Package: `python3 -I tools/package.py [--out DIR]`, verify with `--verify FILE`; a tag `vX.Y.Z` builds the `.uzplugin` release asset (`.github/workflows/release.yml`). Changelog tool tests: `python3 -I -m unittest discover -s tests/tools`.
 - The SessionStart hook `.claude/hooks/session-start.sh` only prepares cloud sessions (installs `lua5.4` via apt if missing).
 
 ## Pointers
