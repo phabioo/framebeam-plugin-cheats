@@ -1,6 +1,6 @@
 -- Cheat code formats: shapes, validation, detection and normalizing (pure Lua).
 --
--- Format ids are the ones of `fb.cheats.formats()`:
+-- Format ids are the ones of `uz.cheats.formats()`:
 --   raw        AAAAAAAA VV            address (8 hex) and one byte (2 hex)
 --   gsa        XXXXXXXX YYYYYYYY      GameShark Advance, 8 + 8 hex (or 12 hex in one group)
 --   cb         XXXXXXXX YYYY          CodeBreaker, 8 + 4 hex

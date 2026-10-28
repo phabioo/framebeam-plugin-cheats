@@ -1,5 +1,5 @@
 local t = require("t")
-local mock = require("fb_mock")
+local mock = require("uz_mock")
 
 local function read(path)
   local f = assert(io.open(path, "rb"))
@@ -17,11 +17,11 @@ end)
 
 t.case("bundled plugin loads in the mock sandbox and shows the panel", function()
   local m = mock.new({ language = "de" })
-  _G.fb = m.fb
+  _G.uz = m.uz
   local chunk = assert(loadfile("plugin/main.lua"))
   chunk()
-  _G.fb = nil
-  t.eq(m.logs[1].text, "Cheats 0.1.2 geladen.")
+  _G.uz = nil
+  t.eq(m.logs[1].text, "Cheats 0.1.3 geladen.")
   t.ok(m.ui.trees.panel and m.ui.trees.screen)
 end)
 
@@ -39,7 +39,7 @@ end)
 t.case("manifest", function()
   local s = read("plugin/manifest.json")
   for _, needle in ipairs({
-    '"id": "uzume.cheats"', '"name": "Cheats"', '"version": "0.1.2"', '"api": 1',
+    '"id": "uzume.cheats"', '"name": "Cheats"', '"version": "0.1.3"', '"api": 1',
     '"permissions": ["ui", "cheats", "store"]', '"entry": "main.lua"', '"panel": { "title": "Cheats" }',
     '"screen": { "title": "Cheats" }', '"add-cheat"', '"cheats-off"',
     '{ "system": "gb" }', '{ "system": "gbc" }', '{ "system": "gba" }', '{ "system": "nds" }', '{ "system": "3ds" }',
@@ -84,4 +84,14 @@ t.case("i18n: every key used in the sources exists", function()
     "err_one_group", "err_group_count", "err_gg_group", "err_shape", "err_too_many_lines" }) do
     t.ok(en[k], k)
   end
+end)
+
+t.case("old apps with only the global fb still start the bundled plugin", function()
+  local m = mock.new({ language = "de" })
+  _G.uz, _G.fb = nil, m.uz
+  local chunk = assert(loadfile("plugin/main.lua"))
+  local ok, err = pcall(chunk)
+  _G.fb = nil
+  assert(ok, err)
+  t.ok(m.ui.trees.panel and m.ui.trees.screen)
 end)

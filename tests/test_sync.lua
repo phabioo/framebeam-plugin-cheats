@@ -1,7 +1,7 @@
 local t = require("t")
 local S = require("model.sync")
 local L = require("model.library")
-local mock = require("fb_mock")
+local mock = require("uz_mock")
 
 local function e(id, name, code, extra)
   local x = { id = id, name = name, format = "gsa", code = code or "0212A4C8 000F423F", group = "mine", enabled = false }
@@ -60,36 +60,36 @@ end)
 t.case("save writes with the revision and returns the new one", function()
   local m = mock.new()
   local data = { cheats = { e("a", "One") }, deleted = {} }
-  local d, rev, status = S.save(m.fb.store, "cheats.axve", data, nil)
+  local d, rev, status = S.save(m.uz.store, "cheats.axve", data, nil)
   t.eq(status, "ok")
   t.eq(rev, 1)
-  local back, rev2 = S.read(m.fb.store, "cheats.axve")
+  local back, rev2 = S.read(m.uz.store, "cheats.axve")
   t.eq(rev2, 1)
   t.eq(back.cheats[1].name, "One")
-  _, rev, status = S.save(m.fb.store, "cheats.axve", data, rev)
+  _, rev, status = S.save(m.uz.store, "cheats.axve", data, rev)
   t.eq(status, "ok"); t.eq(rev, 2)
 end)
 
 t.case("save on conflict merges both versions and writes again", function()
   local m = mock.new()
-  local _, rev = S.save(m.fb.store, "cheats.axve", { cheats = { e("a", "One") }, deleted = {} }, nil)
+  local _, rev = S.save(m.uz.store, "cheats.axve", { cheats = { e("a", "One") }, deleted = {} }, nil)
   -- another device adds "Remote" meanwhile
   m.store_external("cheats.axve", { v = 1, cheats = { e("a", "One"), e("r", "Remote") }, deleted = {} })
   local mine = { cheats = { e("a", "One"), e("l", "Local") }, deleted = {} }
-  local merged, rev2, status = S.save(m.fb.store, "cheats.axve", mine, rev)
+  local merged, rev2, status = S.save(m.uz.store, "cheats.axve", mine, rev)
   t.eq(status, "merged")
   t.eq(#merged.cheats, 3)
-  local back = S.read(m.fb.store, "cheats.axve")
+  local back = S.read(m.uz.store, "cheats.axve")
   t.eq(#back.cheats, 3)
   t.ok(rev2 > rev)
-  t.eq(m.fb.store.conflicts("cheats.axve"), {})
+  t.eq(m.uz.store.conflicts("cheats.axve"), {})
 end)
 
 t.case("save refuses a value above the store limit", function()
   local m = mock.new()
   local big = { cheats = {}, deleted = {} }
   for i = 1, 400 do big.cheats[i] = e("id" .. i, "Cheat number " .. i, ("0212A4C8 000F423F\n"):rep(40)) end
-  local _, _, status = S.save(m.fb.store, "cheats.axve", big, nil)
+  local _, _, status = S.save(m.uz.store, "cheats.axve", big, nil)
   t.eq(status, "too_big")
   t.eq(m.store.puts, nil)
 end)
