@@ -21,7 +21,7 @@ t.case("bundled plugin loads in the mock sandbox and shows the panel", function(
   local chunk = assert(loadfile("plugin/main.lua"))
   chunk()
   _G.uz = nil
-  t.eq(m.logs[1].text, "Cheats 0.1.3 geladen.")
+  t.eq(m.logs[1].text, "Cheats 0.1.4 geladen.")
   t.ok(m.ui.trees.panel and m.ui.trees.screen)
 end)
 
@@ -39,7 +39,7 @@ end)
 t.case("manifest", function()
   local s = read("plugin/manifest.json")
   for _, needle in ipairs({
-    '"id": "uzume.cheats"', '"name": "Cheats"', '"version": "0.1.3"', '"api": 1',
+    '"id": "uzume.cheats"', '"name": "Cheats"', '"version": "0.1.4"', '"api": 1',
     '"permissions": ["ui", "cheats", "store"]', '"entry": "main.lua"', '"panel": { "title": "Cheats" }',
     '"screen": { "title": "Cheats" }', '"add-cheat"', '"cheats-off"',
     '{ "system": "gb" }', '{ "system": "gbc" }', '{ "system": "gba" }', '{ "system": "nds" }', '{ "system": "3ds" }',

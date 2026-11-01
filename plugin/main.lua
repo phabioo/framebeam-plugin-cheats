@@ -1790,7 +1790,7 @@ function P.build(v)
 
   if v.total == 0 then
     kids[#kids + 1] = { type = "empty", id = "empty_none", title = t("empty_title", { game = v.game_title }),
-      text = t("empty_text"), action_label = t("cheat_database"), action = "open_db" }
+      text = t("empty_text") }
   else
     kids[#kids + 1] = { type = "textfield", id = "search", action = "search", live = true, text = v.query,
       placeholder = t("search_placeholder") }
