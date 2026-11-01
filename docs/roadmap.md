@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: v0.1.3 renames the API namespace to `uz` (falls back to `fb` on older apps); v0.1.2 shows an own empty state for `unavailable`; v0.1.1 fixes the plugin-side findings of the live check of Uzume 0.20 package 5 (below); v0.1.0 was implemented against the 0.20 API contract and tested with a fake `uz` only. Part of Uzume milestone 0.20 "Emulation", section "Cheats" ([Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md), design [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md)).
+Status: v0.1.4 (empty state: the "Cheat database" action is no longer repeated inside the empty block, so "Add cheat" (the one primary) and "Cheat database" are each offered once; no numeric action values are checked, so no float handling was needed); v0.1.3 renames the API namespace to `uz` (falls back to `fb` on older apps); v0.1.2 shows an own empty state for `unavailable`; v0.1.1 fixes the plugin-side findings of the live check of Uzume 0.20 package 5 (below); v0.1.0 was implemented against the 0.20 API contract and tested with a fake `uz` only. Part of Uzume milestone 0.20 "Emulation", section "Cheats" ([Uzume roadmap](https://github.com/phabioo/uzume/blob/main/docs/roadmap.md), design [`docs/design/uzume/cheats.md`](https://github.com/phabioo/uzume/blob/main/docs/design/uzume/cheats.md)).
 
 ## Open work
 
